@@ -278,13 +278,29 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
     $("loginSubmit").disabled = true;
     setAuthMessage("Signing you in…");
-    const {error} = await sb.auth.signInWithPassword({email,password});
-    $("loginSubmit").disabled = false;
 
-    if (error) return setAuthMessage(error.message, true);
-    setAuthMessage("Signed in.");
-    await refreshSession();
-    setTimeout(() => closeModal("authModal"), 500);
+    try {
+      const {data, error} = await sb.auth.signInWithPassword({email,password});
+
+      if (error) {
+        $("loginSubmit").disabled = false;
+        return setAuthMessage(error.message, true);
+      }
+
+      // Use the session returned by signInWithPassword immediately.
+      // The auth-state listener refreshes the UI separately without blocking login.
+      currentUser = data?.user || data?.session?.user || null;
+      await loadCurrentProfile();
+      updateAccountUI();
+
+      $("loginSubmit").disabled = false;
+      setAuthMessage("Signed in.");
+      setTimeout(() => closeModal("authModal"), 500);
+    } catch (err) {
+      console.error("Login error:", err);
+      $("loginSubmit").disabled = false;
+      setAuthMessage(err?.message || "Login failed. Please try again.", true);
+    }
   }
 
   async function signup(){
@@ -506,8 +522,12 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   };
 
   if (sb) {
-    sb.auth.onAuthStateChange(async () => {
-      await refreshSession();
+    sb.auth.onAuthStateChange(() => {
+      // Do not await Supabase auth calls inside this callback.
+      // Waiting here can deadlock the auth lock during sign-in.
+      setTimeout(() => {
+        refreshSession().catch(err => console.error("Session refresh error:", err));
+      }, 0);
     });
   }
 
