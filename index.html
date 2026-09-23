@@ -50,6 +50,24 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 @media(max-width:850px){.nav{display:none}.hero{grid-template-columns:1fr}.feature-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.topbar{padding:0 14px}.brand span:last-child{display:none}main{padding:35px 16px}.feature-grid{grid-template-columns:1fr}.hero h1{font-size:45px}}
 
+    .game-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:24px}
+    .game-search{flex:1;min-width:0;padding:12px 14px;background:#0b0d11;border:1px solid var(--line);border-radius:10px;color:var(--text);outline:none}
+    .game-search:focus{border-color:var(--accent)}
+    .game-uploader{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:24px;margin-bottom:28px}
+    .game-form{display:grid;gap:14px;max-width:760px}
+    .game-form label{display:block;font-size:13px;color:var(--muted)}
+    .game-form input,.game-form textarea{display:block;width:100%;margin-top:7px;padding:12px 13px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);outline:none;resize:vertical}
+    .game-form input:focus,.game-form textarea:focus{border-color:var(--accent)}
+    .game-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden;display:flex;flex-direction:column}
+    .game-card:hover{border-color:#4b5260}
+    .game-thumb{width:100%;height:150px;background:linear-gradient(135deg,#252b38,#151922);display:grid;place-items:center;font-size:48px;overflow:hidden}
+    .game-thumb img{width:100%;height:100%;object-fit:cover}
+    .game-card-body{padding:17px;display:flex;flex-direction:column;gap:8px;flex:1}
+    .game-card .game-title{font-weight:800;font-size:18px}
+    .game-card .game-description{color:var(--muted);line-height:1.5;min-height:42px}
+    .game-card .game-meta{font-size:12px;color:var(--muted)}
+    .game-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
+    .game-card-actions button,.game-card-actions a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
     .admin-status{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted)}
     .admin-row{padding:12px 0;border-bottom:1px solid var(--line)}
     .admin-row:last-child{border-bottom:0}
@@ -116,8 +134,44 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     </section>
 
     <section id="gamesPage" class="page">
-      <div class="page-title"><p class="eyebrow">DELUXE</p><h1>Games</h1><p>Published games will appear here.</p></div>
-      <div class="empty-state"><span>🎮</span><h2>No games yet</h2><p>The real game uploader is the next part of the build.</p></div>
+      <div class="page-title">
+        <p class="eyebrow">DELUXE</p>
+        <h1>Games</h1>
+        <p>Browse published games or submit your own linked HTML game.</p>
+      </div>
+      <div class="game-toolbar">
+        <input id="gameSearch" class="game-search" type="search" placeholder="Search games…">
+        <button class="primary" id="openGameUploader">＋ Submit a Game</button>
+      </div>
+      <div id="gameUploader" class="game-uploader hidden">
+        <div class="section-heading" style="margin-top:0">
+          <div><p class="eyebrow">CREATOR TOOLS</p><h2>Submit a game</h2></div>
+        </div>
+        <p class="small-note">Games are submitted as links. Use a direct HTTP or HTTPS URL to your hosted HTML game. New submissions start as pending until an admin publishes them.</p>
+        <form id="gameForm" class="game-form">
+          <label>Game title<input id="gameTitle" maxlength="100" required placeholder="e.g. Snow Rider 3D"></label>
+          <label>Description<textarea id="gameDescription" maxlength="1000" rows="4" placeholder="Tell players what the game is about."></textarea></label>
+          <label>Thumbnail URL<input id="gameThumbnail" type="url" placeholder="https://example.com/thumbnail.png"></label>
+          <label>Game URL<input id="gameUrl" type="url" required placeholder="https://example.com/game.html"></label>
+          <div class="hero-actions">
+            <button class="primary" type="submit" id="submitGameButton">Submit Game</button>
+            <button class="secondary" type="button" id="cancelGameUploader">Cancel</button>
+          </div>
+          <div id="gameFormMessage" class="auth-message"></div>
+        </form>
+      </div>
+      <div id="myGamesSection" class="hidden" style="margin-top:30px">
+        <div class="section-heading">
+          <div><p class="eyebrow">YOUR SUBMISSIONS</p><h2>My Games</h2></div>
+        </div>
+        <div id="myGamesGrid" class="user-grid"></div>
+      </div>
+      <div id="publicGamesSection">
+        <div class="section-heading">
+          <div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div>
+        </div>
+        <div id="gameGrid" class="user-grid"><div class="loading">Loading games…</div></div>
+      </div>
     </section>
 
     <section id="usersPage" class="page">
@@ -461,38 +515,168 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     openModal("profileModal");
   }
 
+  let allPublishedGames = [];
+  let allMyGames = [];
+
+  function validGameUrl(value){
+    try {
+      const url = new URL(value);
+      return url.protocol === "https:" || url.protocol === "http:";
+    } catch {
+      return false;
+    }
+  }
+
+  function renderGameCard(g, owner=false){
+    const title = escapeHtml(g.title || "Untitled Game");
+    const description = escapeHtml(g.description || "No description.");
+    const creator = escapeHtml(g.profiles?.username || "Unknown creator");
+    const thumb = g.thumbnail_url && validGameUrl(g.thumbnail_url)
+      ? `<img src="${escapeHtml(g.thumbnail_url)}" alt="">`
+      : "🎮";
+
+    return `
+      <article class="game-card">
+        <div class="game-thumb">${thumb}</div>
+        <div class="game-card-body">
+          <div class="game-title">${title}</div>
+          <div class="game-description">${description}</div>
+          <div class="game-meta">${owner ? `Status: ${escapeHtml(g.status || "pending")}` : `Created by ${creator}`}</div>
+          <div class="game-card-actions">
+            ${!owner ? `<a class="primary" href="${escapeHtml(g.game_url)}" target="_blank" rel="noopener">▶ Play</a>` : `<a class="primary" href="${escapeHtml(g.game_url)}" target="_blank" rel="noopener">▶ Preview</a><button class="danger-button" onclick="deleteMyGame('${g.id}')">Delete</button>`}
+          </div>
+        </div>
+      </article>
+    `;
+  }
+
+  function renderGames(filter=""){
+    const q = filter.trim().toLowerCase();
+    const publicGames = allPublishedGames.filter(g =>
+      !q ||
+      String(g.title || "").toLowerCase().includes(q) ||
+      String(g.description || "").toLowerCase().includes(q) ||
+      String(g.profiles?.username || "").toLowerCase().includes(q)
+    );
+
+    $("gameGrid").innerHTML = publicGames.map(g => renderGameCard(g)).join("") ||
+      '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
+
+    if (currentUser) {
+      $("myGamesSection").classList.remove("hidden");
+      const mine = allMyGames.filter(g =>
+        !q ||
+        String(g.title || "").toLowerCase().includes(q) ||
+        String(g.description || "").toLowerCase().includes(q)
+      );
+      $("myGamesGrid").innerHTML = mine.map(g => renderGameCard(g, true)).join("") ||
+        '<div class="loading">You have no submissions yet.</div>';
+    } else {
+      $("myGamesSection").classList.add("hidden");
+    }
+  }
+
   async function loadGames(){
-    const page = $("gamesPage");
     if (!sb) return;
-    const {data,error} = await sb.from("games")
-      .select("*").eq("status","published").order("created_at",{ascending:false});
+    $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
+
+    const publicQuery = sb.from("games")
+      .select("id,title,description,thumbnail_url,game_url,status,created_at,creator_id,profiles(username)")
+      .eq("status","published")
+      .order("created_at",{ascending:false});
+
+    const mineQuery = currentUser
+      ? sb.from("games")
+          .select("id,title,description,thumbnail_url,game_url,status,created_at,creator_id,profiles(username)")
+          .eq("creator_id",currentUser.id)
+          .order("created_at",{ascending:false})
+      : Promise.resolve({data:[],error:null});
+
+    const [publicResult, mineResult] = await Promise.all([publicQuery, mineQuery]);
+
+    if (publicResult.error) {
+      console.error(publicResult.error);
+      $("gameGrid").innerHTML = `<div class="loading">Unable to load games: ${escapeHtml(publicResult.error.message)}</div>`;
+      return;
+    }
+
+    if (mineResult.error) console.error(mineResult.error);
+
+    allPublishedGames = publicResult.data || [];
+    allMyGames = mineResult.data || [];
+    renderGames($("gameSearch")?.value || "");
+  }
+
+  function openGameUploader(){
+    if (!currentUser) {
+      openAuth("login");
+      setAuthMessage("Sign in first to submit a game.");
+      return;
+    }
+    $("gameUploader").classList.remove("hidden");
+    $("gameTitle").focus();
+  }
+
+  function closeGameUploader(){
+    $("gameUploader").classList.add("hidden");
+    $("gameForm")?.reset();
+    $("gameFormMessage").textContent = "";
+  }
+
+  function setGameFormMessage(message, error=false){
+    const el = $("gameFormMessage");
+    if (!el) return;
+    el.textContent = message;
+    el.style.color = error ? "#ff7b7b" : "var(--muted)";
+  }
+
+  async function submitGame(event){
+    event.preventDefault();
+    if (!sb || !currentUser) return openAuth("login");
+
+    const title = $("gameTitle").value.trim();
+    const description = $("gameDescription").value.trim();
+    const thumbnail_url = $("gameThumbnail").value.trim();
+    const game_url = $("gameUrl").value.trim();
+
+    if (!title) return setGameFormMessage("Enter a game title.", true);
+    if (!validGameUrl(game_url)) return setGameFormMessage("Enter a valid HTTP or HTTPS game URL.", true);
+    if (thumbnail_url && !validGameUrl(thumbnail_url)) return setGameFormMessage("The thumbnail URL must be HTTP or HTTPS.", true);
+
+    $("submitGameButton").disabled = true;
+    setGameFormMessage("Submitting game…");
+
+    const {error} = await sb.from("games").insert({
+      creator_id: currentUser.id,
+      title,
+      description,
+      thumbnail_url: thumbnail_url || null,
+      game_url,
+      status: "pending"
+    });
+
+    $("submitGameButton").disabled = false;
 
     if (error) {
       console.error(error);
-      return;
+      return setGameFormMessage(error.message, true);
     }
 
-    if (!data?.length) {
-      page.querySelector(".empty-state").innerHTML =
-        "<span>🎮</span><h2>No games yet</h2><p>Published games will appear here.</p>";
-      return;
-    }
+    setGameFormMessage("Game submitted! It is waiting for admin approval.");
+    $("gameForm").reset();
+    await loadGames();
+  }
 
-    page.querySelector(".empty-state")?.remove();
-    if (!page.querySelector("#gameGrid")) {
-      const grid = document.createElement("div");
-      grid.id = "gameGrid";
-      grid.className = "user-grid";
-      page.appendChild(grid);
-    }
-    $("gameGrid").innerHTML = data.map(g => `
-      <article class="user-card">
-        <div class="avatar">🎮</div>
-        <div class="user-name">${escapeHtml(g.title || g.name || "Untitled Game")}</div>
-        <div class="role">Published</div>
-        <p style="color:var(--muted);line-height:1.5">${escapeHtml(g.description || "")}</p>
-      </article>
-    `).join("");
+  async function deleteMyGame(id){
+    if (!sb || !currentUser) return;
+    if (!confirm("Delete your game submission?")) return;
+
+    const {error} = await sb.from("games").delete()
+      .eq("id",id)
+      .eq("creator_id",currentUser.id);
+
+    if (error) return alert(error.message);
+    await loadGames();
   }
 
   async function loadChat(){
@@ -563,7 +747,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       sb.from("games").select("id", {count:"exact", head:true}).eq("status","published"),
       sb.from("messages").select("id", {count:"exact", head:true}),
       sb.from("profiles").select("id,username,avatar_url,bio").order("created_at",{ascending:false}).limit(8),
-      sb.from("games").select("id,title,name,description,status,created_at,creator_id").order("created_at",{ascending:false}).limit(8),
+      sb.from("games").select("id,title,description,thumbnail_url,game_url,status,created_at,creator_id,profiles(username)").order("created_at",{ascending:false}).limit(8),
       sb.from("messages").select("id,sender_id,content,created_at").order("created_at",{ascending:false}).limit(15)
     ]);
 
@@ -595,7 +779,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
           <p style="color:var(--muted);line-height:1.5">${escapeHtml(g.description || "No description.")}</p>
           <div class="role">Creator: ${escapeHtml(g.creator_id || "unknown")}</div>
           <div class="admin-actions">
-            ${g.status !== "published" ? `<button class="primary" onclick="setGameStatus('${g.id}','published')">Publish</button>` : `<button class="secondary" onclick="setGameStatus('${g.id}','draft')">Unpublish</button>`}
+            ${g.status !== "published" ? `<button class="primary" onclick="setGameStatus('${g.id}','published')">Publish</button>` : `<button class="secondary" onclick="setGameStatus('${g.id}','pending')">Unpublish</button>`}
             <button class="danger-button" onclick="deleteGameAdmin('${g.id}')">Delete</button>
           </div>
         </article>
@@ -643,6 +827,11 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     openModal("authModal");
     switchAuthTab(tab);
   }
+
+  $("openGameUploader")?.addEventListener("click", openGameUploader);
+  $("cancelGameUploader")?.addEventListener("click", closeGameUploader);
+  $("gameForm")?.addEventListener("submit", submitGame);
+  $("gameSearch")?.addEventListener("input", e => renderGames(e.target.value));
 
   document.addEventListener("click", e => {
     const pageTarget = e.target.closest("[data-page]");
