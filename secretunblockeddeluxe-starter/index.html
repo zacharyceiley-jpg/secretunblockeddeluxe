@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#111318">
+  <title>Secret Unblocked Deluxe</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="#" data-page="home">
+      <span class="brand-mark">S</span>
+      <span>Secret Unblocked <b>Deluxe</b></span>
+    </a>
+
+    <nav class="nav">
+      <a href="#" data-page="home">Home</a>
+      <a href="#" data-page="games">Games</a>
+      <a href="#" data-page="users">Users</a>
+      <a href="#" data-page="chat">Chat</a>
+      <a href="https://zacharyceiley-jpg.github.io/secret-Unblocked-Listen/" target="_blank" rel="noopener">Listen</a>
+    </nav>
+
+    <div class="account-area">
+      <button id="accountButton" class="account-button">Sign In</button>
+      <button id="menuButton" class="icon-button" aria-label="Open menu">☰</button>
+    </div>
+  </header>
+
+  <main id="app">
+    <section id="homePage" class="page active">
+      <div class="hero">
+        <div>
+          <p class="eyebrow">THE NEW PLATFORM</p>
+          <h1>Welcome to <span>Secret Unblocked Deluxe.</span></h1>
+          <p class="hero-copy">
+            Games, users, chat and more — rebuilt from the ground up with real accounts and a real online backend.
+          </p>
+          <div class="hero-actions">
+            <button class="primary" data-page="games">Explore Games</button>
+            <button class="secondary" id="heroAccountButton">Create an Account</button>
+          </div>
+        </div>
+        <div class="hero-card">
+          <div class="status-dot"></div>
+          <strong>Deluxe is online</strong>
+          <span>Real accounts are now supported.</span>
+        </div>
+      </div>
+
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">COMING TO DELUXE</p>
+          <h2>Everything in one place.</h2>
+        </div>
+      </div>
+
+      <div class="feature-grid">
+        <article class="feature"><span>🎮</span><h3>Games</h3><p>Browse and eventually publish your own games.</p></article>
+        <article class="feature"><span>👥</span><h3>Users</h3><p>Real profiles backed by your online database.</p></article>
+        <article class="feature"><span>💬</span><h3>Chat</h3><p>Talk with other Secret Unblocked Deluxe users.</p></article>
+        <article class="feature"><span>👑</span><h3>Management</h3><p>The owner account gets the tools needed to manage the platform.</p></article>
+      </div>
+    </section>
+
+    <section id="gamesPage" class="page">
+      <div class="page-title"><p class="eyebrow">DELUXE</p><h1>Games</h1><p>Published games will appear here.</p></div>
+      <div class="empty-state"><span>🎮</span><h2>No games yet</h2><p>The real game uploader is the next part of the build.</p></div>
+    </section>
+
+    <section id="usersPage" class="page">
+      <div class="page-title"><p class="eyebrow">COMMUNITY</p><h1>Users</h1><p>Registered users will appear here.</p></div>
+      <div id="usersGrid" class="user-grid"><div class="loading">Loading users…</div></div>
+    </section>
+
+    <section id="chatPage" class="page">
+      <div class="page-title"><p class="eyebrow">COMMUNITY</p><h1>Chat</h1><p>Live chat is coming next.</p></div>
+      <div class="empty-state"><span>💬</span><h2>Chat is being built</h2><p>Once enabled, messages will be stored in the Deluxe database and update live.</p></div>
+    </section>
+  </main>
+
+  <div id="authModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-auth></div>
+    <div class="modal-card">
+      <button class="modal-close" data-close-auth>×</button>
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-auth-tab="login">Log In</button>
+        <button class="auth-tab" data-auth-tab="signup">Sign Up</button>
+      </div>
+
+      <div id="loginForm" class="auth-form">
+        <p class="eyebrow">WELCOME BACK</p>
+        <h2>Log in to Deluxe</h2>
+        <label>Email</label>
+        <input id="loginEmail" type="email" autocomplete="email" placeholder="you@example.com">
+        <label>Password</label>
+        <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Your password">
+        <button id="loginSubmit" class="primary full">Log In</button>
+        <button id="resetPassword" class="text-button">Forgot your password?</button>
+      </div>
+
+      <div id="signupForm" class="auth-form hidden">
+        <p class="eyebrow">JOIN DELUXE</p>
+        <h2>Create your account</h2>
+        <label>Username</label>
+        <input id="signupUsername" type="text" maxlength="24" autocomplete="username" placeholder="Choose a username">
+        <label>Email</label>
+        <input id="signupEmail" type="email" autocomplete="email" placeholder="you@example.com">
+        <label>Password</label>
+        <input id="signupPassword" type="password" minlength="8" autocomplete="new-password" placeholder="At least 8 characters">
+        <button id="signupSubmit" class="primary full">Create Account</button>
+        <p class="small-note">By registering, you create a standard Deluxe user account.</p>
+      </div>
+
+      <div id="authMessage" class="auth-message" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <div id="profileModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" data-close-profile></div>
+    <div class="modal-card profile-card">
+      <button class="modal-close" data-close-profile>×</button>
+      <div id="profileContent"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0"></script>
+  <script src="js/config.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
