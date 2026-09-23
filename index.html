@@ -378,21 +378,46 @@ async function signUp() {
 async function logIn() {
   const email = $("loginEmail").value.trim();
   const password = $("loginPassword").value;
+  const button = $("loginSubmit");
 
-  $("loginSubmit").disabled = true;
-  setAuthMessage("Signing you in…");
-
-  const { error } = await client.auth.signInWithPassword({ email, password });
-
-  $("loginSubmit").disabled = false;
-
-  if (error) {
-    setAuthMessage(error.message);
+  if (!email || !password) {
+    setAuthMessage("Enter your email and password.");
     return;
   }
 
-  setAuthMessage("Signed in!", true);
-  setTimeout(closeAuth, 400);
+  button.disabled = true;
+  button.textContent = "Signing in…";
+  setAuthMessage("Signing you in…");
+
+  try {
+    // Prevent the UI from hanging forever if the network/auth request stalls.
+    const result = await Promise.race([
+      client.auth.signInWithPassword({ email, password }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("The sign-in request timed out. Check your connection and try again.")), 15000)
+      )
+    ]);
+
+    const { error } = result;
+
+    if (error) {
+      setAuthMessage(error.message);
+      return;
+    }
+
+    setAuthMessage("Signed in!", true);
+
+    // Give Supabase a moment to persist the session before updating the UI.
+    await new Promise(resolve => setTimeout(resolve, 250));
+    await refreshAccountUI();
+    setTimeout(closeAuth, 400);
+  } catch (error) {
+    console.error("Login error:", error);
+    setAuthMessage(error?.message || "Sign-in failed. Please try again.");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Log In";
+  }
 }
 
 async function resetPassword() {
