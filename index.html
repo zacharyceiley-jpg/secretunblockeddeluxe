@@ -50,6 +50,12 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 @media(max-width:850px){.nav{display:none}.hero{grid-template-columns:1fr}.feature-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.topbar{padding:0 14px}.brand span:last-child{display:none}main{padding:35px 16px}.feature-grid{grid-template-columns:1fr}.hero h1{font-size:45px}}
 
+    .admin-status{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted)}
+    .admin-row{padding:12px 0;border-bottom:1px solid var(--line)}
+    .admin-row:last-child{border-bottom:0}
+    .admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .danger-button{background:#3a161b;color:#ffb1b1;border:1px solid #693039;padding:8px 11px;border-radius:9px;cursor:pointer}
+    .hidden{display:none!important}
 </style>
 </head>
 <body>
@@ -117,6 +123,47 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     <section id="usersPage" class="page">
       <div class="page-title"><p class="eyebrow">COMMUNITY</p><h1>Users</h1><p>Registered users will appear here.</p></div>
       <div id="usersGrid" class="user-grid"><div class="loading">Loading users…</div></div>
+    </section>
+
+    <section id="adminPage" class="page">
+      <div class="page-title">
+        <p class="eyebrow">ADMINISTRATION</p>
+        <h1>Admin Panel</h1>
+        <p>Monitor Secret Unblocked Deluxe before Games and Chat officially open.</p>
+      </div>
+
+      <div id="adminAccessMessage" class="empty-state hidden">
+        <span>🔒</span>
+        <h2>Admin access required</h2>
+        <p>Your account does not currently have the admin role.</p>
+      </div>
+
+      <div id="adminDashboard" class="hidden">
+        <div class="feature-grid" style="margin-bottom:22px">
+          <article class="feature"><span>👥</span><h3 id="adminUserCount">—</h3><p>Registered users</p></article>
+          <article class="feature"><span>🎮</span><h3 id="adminGameCount">—</h3><p>Total games</p></article>
+          <article class="feature"><span>💬</span><h3 id="adminMessageCount">—</h3><p>Total messages</p></article>
+          <article class="feature"><span>🟢</span><h3 id="adminPublishedCount">—</h3><p>Published games</p></article>
+        </div>
+
+        <div class="section-heading">
+          <div><p class="eyebrow">MONITORING</p><h2>Recent users</h2></div>
+          <button class="secondary" id="adminRefresh">Refresh</button>
+        </div>
+        <div id="adminUsers" class="user-grid"><div class="loading">Loading…</div></div>
+
+        <div class="section-heading" style="margin-top:30px">
+          <div><p class="eyebrow">GAMES</p><h2>Recent games</h2></div>
+        </div>
+        <div id="adminGames" class="user-grid"><div class="loading">Loading…</div></div>
+
+        <div class="section-heading" style="margin-top:30px">
+          <div><p class="eyebrow">CHAT</p><h2>Recent messages</h2></div>
+        </div>
+        <div id="adminMessages" style="background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px">
+          <div class="loading">Loading…</div>
+        </div>
+      </div>
     </section>
 
     <section id="chatPage" class="page">
@@ -214,6 +261,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     if (name === "users") loadUsers();
     if (name === "games") loadGames();
     if (name === "chat") loadChat();
+    if (name === "admin") loadAdminPanel();
   }
 
   function initials(name){
@@ -488,6 +536,109 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     await loadChat();
   }
 
+  async function loadAdminPanel(){
+    const access = $("adminAccessMessage");
+    const dashboard = $("adminDashboard");
+
+    if (!currentUser || currentRole !== "admin") {
+      access.classList.remove("hidden");
+      dashboard.classList.add("hidden");
+      return;
+    }
+
+    access.classList.add("hidden");
+    dashboard.classList.remove("hidden");
+
+    const [
+      usersResult,
+      gamesResult,
+      publishedResult,
+      messagesResult,
+      recentUsersResult,
+      recentGamesResult,
+      recentMessagesResult
+    ] = await Promise.all([
+      sb.from("profiles").select("id", {count:"exact", head:true}),
+      sb.from("games").select("id", {count:"exact", head:true}),
+      sb.from("games").select("id", {count:"exact", head:true}).eq("status","published"),
+      sb.from("messages").select("id", {count:"exact", head:true}),
+      sb.from("profiles").select("id,username,avatar_url,bio").order("created_at",{ascending:false}).limit(8),
+      sb.from("games").select("id,title,name,description,status,created_at,creator_id").order("created_at",{ascending:false}).limit(8),
+      sb.from("messages").select("id,sender_id,content,created_at").order("created_at",{ascending:false}).limit(15)
+    ]);
+
+    $("adminUserCount").textContent = usersResult.count ?? "0";
+    $("adminGameCount").textContent = gamesResult.count ?? "0";
+    $("adminPublishedCount").textContent = publishedResult.count ?? "0";
+    $("adminMessageCount").textContent = messagesResult.count ?? "0";
+
+    if (recentUsersResult.error) {
+      $("adminUsers").innerHTML = '<div class="loading">Unable to load users.</div>';
+    } else {
+      $("adminUsers").innerHTML = (recentUsersResult.data || []).map(u => `
+        <article class="user-card">
+          <div class="avatar">${u.avatar_url ? `<img src="${escapeHtml(u.avatar_url)}" alt="">` : escapeHtml(initials(u.username))}</div>
+          <div class="user-name">${escapeHtml(u.username || "User")}</div>
+          <div class="role">ID: ${escapeHtml(u.id)}</div>
+        </article>
+      `).join("") || '<div class="loading">No users yet.</div>';
+    }
+
+    if (recentGamesResult.error) {
+      $("adminGames").innerHTML = '<div class="loading">Unable to load games.</div>';
+    } else {
+      $("adminGames").innerHTML = (recentGamesResult.data || []).map(g => `
+        <article class="user-card">
+          <div class="avatar">🎮</div>
+          <div class="user-name">${escapeHtml(g.title || g.name || "Untitled Game")}</div>
+          <div class="admin-status">${escapeHtml(g.status || "unknown")}</div>
+          <p style="color:var(--muted);line-height:1.5">${escapeHtml(g.description || "No description.")}</p>
+          <div class="role">Creator: ${escapeHtml(g.creator_id || "unknown")}</div>
+          <div class="admin-actions">
+            ${g.status !== "published" ? `<button class="primary" onclick="setGameStatus('${g.id}','published')">Publish</button>` : `<button class="secondary" onclick="setGameStatus('${g.id}','draft')">Unpublish</button>`}
+            <button class="danger-button" onclick="deleteGameAdmin('${g.id}')">Delete</button>
+          </div>
+        </article>
+      `).join("") || '<div class="loading">No games yet.</div>';
+    }
+
+    if (recentMessagesResult.error) {
+      $("adminMessages").innerHTML = '<div class="loading">Unable to load messages.</div>';
+    } else {
+      $("adminMessages").innerHTML = (recentMessagesResult.data || []).map(m => `
+        <div class="admin-row">
+          <div><strong>${escapeHtml(m.sender_id === currentUser.id ? "You" : "User")}</strong>
+          <span class="admin-status">${escapeHtml(new Date(m.created_at).toLocaleString())}</span></div>
+          <div style="color:var(--muted);margin-top:5px;line-height:1.5">${escapeHtml(m.content)}</div>
+          <div class="admin-actions"><button class="danger-button" onclick="deleteMessageAdmin('${m.id}')">Delete message</button></div>
+        </div>
+      `).join("") || '<div class="loading">No messages yet.</div>';
+    }
+  }
+
+  async function setGameStatus(id,status){
+    if (currentRole !== "admin") return;
+    const {error} = await sb.from("games").update({status}).eq("id",id);
+    if (error) return alert(error.message);
+    await loadAdminPanel();
+  }
+
+  async function deleteGameAdmin(id){
+    if (currentRole !== "admin") return;
+    if (!confirm("Delete this game?")) return;
+    const {error} = await sb.from("games").delete().eq("id",id);
+    if (error) return alert(error.message);
+    await loadAdminPanel();
+  }
+
+  async function deleteMessageAdmin(id){
+    if (currentRole !== "admin") return;
+    if (!confirm("Delete this message?")) return;
+    const {error} = await sb.from("messages").delete().eq("id",id);
+    if (error) return alert(error.message);
+    await loadAdminPanel();
+  }
+
   function openAuth(tab="login"){
     openModal("authModal");
     switchAuthTab(tab);
@@ -512,13 +663,15 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   $("loginSubmit").onclick = login;
   $("signupSubmit").onclick = signup;
   $("resetPassword").onclick = resetPassword;
+  $("adminRefresh").onclick = loadAdminPanel;
 
   $("menuButton").onclick = () => {
     if (!currentUser) return openAuth("login");
-    const action = currentRole === "admin"
-      ? "Admin account is active. Admin controls can be added here."
-      : "You are signed in as " + (currentProfile?.username || "a user") + ".";
-    alert(action);
+    if (currentRole === "admin") {
+      showPage("admin");
+      return;
+    }
+    alert("You are signed in as " + (currentProfile?.username || "a user") + ".");
   };
 
   if (sb) {
