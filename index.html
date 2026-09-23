@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#111318">
   <title>Secret Unblocked Deluxe</title>
-  <link rel="stylesheet" href="css/style.css">
   <style>
 *{box-sizing:border-box}
 :root{
@@ -172,7 +171,347 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.105.0"></script>
-  <script src="js/config.js"></script>
-  <script src="js/app.js"></script>
+  <script>
+  /*
+   * SECRET UNBLOCKED DELUXE — SINGLE FILE BUILD
+   * Replace these two placeholders with the values currently in your Supabase
+   * project's client configuration. Never put a service-role key in this file.
+   */
+  const SUPABASE_URL = "YOUR_SUPABASE_URL";
+  const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";
+
+  const sb = (SUPABASE_URL !== "YOUR_SUPABASE_URL" &&
+              SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY")
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  let currentUser = null;
+  let currentProfile = null;
+  let currentRole = "user";
+
+  const $ = id => document.getElementById(id);
+
+  function setAuthMessage(message, error=false){
+    const el = $("authMessage");
+    if (!el) return;
+    el.textContent = message || "";
+    el.style.color = error ? "#ff7b7b" : "var(--muted)";
+  }
+
+  function openModal(id){
+    $(id).classList.remove("hidden");
+    $(id).setAttribute("aria-hidden","false");
+  }
+  function closeModal(id){
+    $(id).classList.add("hidden");
+    $(id).setAttribute("aria-hidden","true");
+  }
+
+  function showPage(name){
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    const page = $(name + "Page");
+    if (page) page.classList.add("active");
+    if (name === "users") loadUsers();
+    if (name === "games") loadGames();
+    if (name === "chat") loadChat();
+  }
+
+  function initials(name){
+    return (name || "?").trim().slice(0,2).toUpperCase();
+  }
+
+  function escapeHtml(value){
+    return String(value ?? "").replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  async function refreshSession(){
+    if (!sb) {
+      $("accountButton").textContent = "Configure Supabase";
+      return;
+    }
+    const {data, error} = await sb.auth.getSession();
+    if (error) console.error(error);
+    currentUser = data?.session?.user || null;
+    await loadCurrentProfile();
+    updateAccountUI();
+  }
+
+  async function loadCurrentProfile(){
+    currentProfile = null;
+    currentRole = "user";
+    if (!sb || !currentUser) return;
+
+    const [{data: profile}, {data: role}] = await Promise.all([
+      sb.from("profiles").select("*").eq("id", currentUser.id).maybeSingle(),
+      sb.from("user_roles").select("role").eq("user_id", currentUser.id).maybeSingle()
+    ]);
+
+    currentProfile = profile || null;
+    currentRole = role?.role || "user";
+  }
+
+  function updateAccountUI(){
+    const btn = $("accountButton");
+    if (!currentUser) {
+      btn.textContent = "Sign In";
+      return;
+    }
+    btn.textContent = currentProfile?.username || currentUser.email || "Account";
+  }
+
+  function switchAuthTab(tab){
+    document.querySelectorAll(".auth-tab").forEach(b =>
+      b.classList.toggle("active", b.dataset.authTab === tab)
+    );
+    $("loginForm").classList.toggle("hidden", tab !== "login");
+    $("signupForm").classList.toggle("hidden", tab !== "signup");
+    setAuthMessage("");
+  }
+
+  async function login(){
+    if (!sb) return setAuthMessage("Add your Supabase URL and anon key first.", true);
+    const email = $("loginEmail").value.trim();
+    const password = $("loginPassword").value;
+    if (!email || !password) return setAuthMessage("Enter your email and password.", true);
+
+    $("loginSubmit").disabled = true;
+    setAuthMessage("Signing you in…");
+    const {error} = await sb.auth.signInWithPassword({email,password});
+    $("loginSubmit").disabled = false;
+
+    if (error) return setAuthMessage(error.message, true);
+    setAuthMessage("Signed in.");
+    await refreshSession();
+    setTimeout(() => closeModal("authModal"), 500);
+  }
+
+  async function signup(){
+    if (!sb) return setAuthMessage("Add your Supabase URL and anon key first.", true);
+    const username = $("signupUsername").value.trim();
+    const email = $("signupEmail").value.trim();
+    const password = $("signupPassword").value;
+
+    if (!username || username.length < 2)
+      return setAuthMessage("Choose a username with at least 2 characters.", true);
+    if (!email) return setAuthMessage("Enter your email.", true);
+    if (password.length < 8)
+      return setAuthMessage("Your password must be at least 8 characters.", true);
+
+    $("signupSubmit").disabled = true;
+    setAuthMessage("Creating your account…");
+
+    const {data,error} = await sb.auth.signUp({
+      email,
+      password,
+      options:{data:{username}}
+    });
+
+    $("signupSubmit").disabled = false;
+
+    if (error) return setAuthMessage(error.message, true);
+
+    if (data.session) {
+      await refreshSession();
+      setAuthMessage("Account created.");
+      setTimeout(() => closeModal("authModal"), 700);
+    } else {
+      setAuthMessage("Account created. Check your email to confirm it, then log in.");
+    }
+  }
+
+  async function resetPassword(){
+    if (!sb) return setAuthMessage("Add your Supabase URL and anon key first.", true);
+    const email = $("loginEmail").value.trim();
+    if (!email) return setAuthMessage("Enter your email first.", true);
+
+    const redirectTo = location.href.split("#")[0];
+    const {error} = await sb.auth.resetPasswordForEmail(email,{redirectTo});
+    setAuthMessage(error ? error.message : "Password reset email sent.");
+  }
+
+  async function logout(){
+    if (sb) await sb.auth.signOut();
+    currentUser = null;
+    currentProfile = null;
+    currentRole = "user";
+    updateAccountUI();
+    showPage("home");
+  }
+
+  async function loadUsers(){
+    const grid = $("usersGrid");
+    if (!sb) {
+      grid.innerHTML = '<div class="loading">Connect Supabase to load users.</div>';
+      return;
+    }
+
+    grid.innerHTML = '<div class="loading">Loading users…</div>';
+    const {data,error} = await sb
+      .from("profiles")
+      .select("id,username,avatar_url,bio")
+      .order("username");
+
+    if (error) {
+      grid.innerHTML = '<div class="loading">Unable to load users.</div>';
+      console.error(error);
+      return;
+    }
+
+    if (!data?.length) {
+      grid.innerHTML = '<div class="empty-state"><span>👥</span><h2>No users yet</h2><p>Create the first Deluxe account.</p></div>';
+      return;
+    }
+
+    grid.innerHTML = data.map(u => `
+      <article class="user-card" onclick="viewProfile('${u.id}')">
+        <div class="avatar">
+          ${u.avatar_url ? `<img src="${escapeHtml(u.avatar_url)}" alt="">` : escapeHtml(initials(u.username))}
+        </div>
+        <div class="user-name">${escapeHtml(u.username || "User")}</div>
+        <div class="role">Deluxe user</div>
+      </article>
+    `).join("");
+  }
+
+  async function viewProfile(id){
+    if (!sb) return;
+    const {data:p,error} = await sb.from("profiles")
+      .select("*").eq("id",id).maybeSingle();
+    if (error || !p) return;
+
+    $("profileContent").innerHTML = `
+      <div class="profile-head">
+        <div class="avatar">
+          ${p.avatar_url ? `<img src="${escapeHtml(p.avatar_url)}" alt="">` : escapeHtml(initials(p.username))}
+        </div>
+        <div>
+          <h2>${escapeHtml(p.username || "User")}</h2>
+          <div class="role">Deluxe user</div>
+        </div>
+      </div>
+      <p class="profile-bio">${escapeHtml(p.bio || "No bio yet.")}</p>
+      <div class="profile-meta">Member of Secret Unblocked Deluxe</div>
+    `;
+    openModal("profileModal");
+  }
+
+  async function loadGames(){
+    const page = $("gamesPage");
+    if (!sb) return;
+    const {data,error} = await sb.from("games")
+      .select("*").eq("status","published").order("created_at",{ascending:false});
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    if (!data?.length) {
+      page.querySelector(".empty-state").innerHTML =
+        "<span>🎮</span><h2>No games yet</h2><p>Published games will appear here.</p>";
+      return;
+    }
+
+    page.querySelector(".empty-state")?.remove();
+    if (!page.querySelector("#gameGrid")) {
+      const grid = document.createElement("div");
+      grid.id = "gameGrid";
+      grid.className = "user-grid";
+      page.appendChild(grid);
+    }
+    $("gameGrid").innerHTML = data.map(g => `
+      <article class="user-card">
+        <div class="avatar">🎮</div>
+        <div class="user-name">${escapeHtml(g.title || g.name || "Untitled Game")}</div>
+        <div class="role">Published</div>
+        <p style="color:var(--muted);line-height:1.5">${escapeHtml(g.description || "")}</p>
+      </article>
+    `).join("");
+  }
+
+  async function loadChat(){
+    const page = $("chatPage");
+    if (!sb || !currentUser) return;
+    const {data,error} = await sb.from("messages")
+      .select("id,sender_id,content,created_at")
+      .order("created_at",{ascending:true}).limit(100);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    page.innerHTML = `
+      <div class="page-title"><p class="eyebrow">COMMUNITY</p><h1>Chat</h1>
+      <p>Talk with other Deluxe users.</p></div>
+      <div id="chatBox" style="background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px;min-height:280px;max-height:55vh;overflow:auto">
+        ${(data || []).map(m => `<div style="padding:9px 0;border-bottom:1px solid var(--line)"><b>${m.sender_id === currentUser.id ? "You" : "User"}</b><div style="color:var(--muted);margin-top:3px">${escapeHtml(m.content)}</div></div>`).join("") || '<div class="loading">No messages yet.</div>'}
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <input id="chatInput" style="flex:1;padding:12px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text)" placeholder="Write a message…">
+        <button class="primary" id="chatSend">Send</button>
+      </div>
+    `;
+    $("chatSend").onclick = sendMessage;
+  }
+
+  async function sendMessage(){
+    if (!sb || !currentUser) return openAuth();
+    const input = $("chatInput");
+    const content = input.value.trim();
+    if (!content) return;
+
+    const {error} = await sb.from("messages").insert({
+      sender_id:currentUser.id,
+      content
+    });
+    if (error) return alert(error.message);
+    input.value = "";
+    await loadChat();
+  }
+
+  function openAuth(tab="login"){
+    openModal("authModal");
+    switchAuthTab(tab);
+  }
+
+  document.addEventListener("click", e => {
+    const pageTarget = e.target.closest("[data-page]");
+    if (pageTarget) {
+      e.preventDefault();
+      showPage(pageTarget.dataset.page);
+    }
+
+    const authTab = e.target.closest("[data-auth-tab]");
+    if (authTab) switchAuthTab(authTab.dataset.authTab);
+
+    if (e.target.closest("[data-close-auth]")) closeModal("authModal");
+    if (e.target.closest("[data-close-profile]")) closeModal("profileModal");
+  });
+
+  $("accountButton").onclick = () => currentUser ? viewProfile(currentUser.id) : openAuth("login");
+  $("heroAccountButton").onclick = () => openAuth("signup");
+  $("loginSubmit").onclick = login;
+  $("signupSubmit").onclick = signup;
+  $("resetPassword").onclick = resetPassword;
+
+  $("menuButton").onclick = () => {
+    if (!currentUser) return openAuth("login");
+    const action = currentRole === "admin"
+      ? "Admin account is active. Admin controls can be added here."
+      : "You are signed in as " + (currentProfile?.username || "a user") + ".";
+    alert(action);
+  };
+
+  if (sb) {
+    sb.auth.onAuthStateChange(async () => {
+      await refreshSession();
+    });
+  }
+
+  refreshSession();
+  </script>
 </body>
 </html>
