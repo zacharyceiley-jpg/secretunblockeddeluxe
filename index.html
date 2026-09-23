@@ -68,7 +68,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     </nav>
 
     <div class="account-area">
-      <button id="accountButton" class="account-button" type="button" onclick="openAuth('login')">Sign In</button>
+      <button id="accountButton" class="account-button" type="button">Sign In</button>
       <button id="menuButton" class="icon-button" aria-label="Open menu">☰</button>
     </div>
   </header>
@@ -84,7 +84,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
           </p>
           <div class="hero-actions">
             <button class="primary" data-page="games">Explore Games</button>
-            <button class="secondary" id="heroAccountButton" type="button" onclick="openAuth('signup')">Create an Account</button>
+            <button class="secondary" id="heroAccountButton" type="button">Create an Account</button>
           </div>
         </div>
         <div class="hero-card">
@@ -182,6 +182,14 @@ window.SUD_CONFIG = {
 
 </script>
   <script>
+if (!window.supabase || typeof window.supabase.createClient !== "function") {
+  document.addEventListener("DOMContentLoaded", () => {
+    const msg = document.getElementById("authMessage");
+    if (msg) msg.textContent = "Authentication library failed to load. Please refresh the page.";
+  });
+  throw new Error("Supabase JavaScript client failed to load.");
+}
+
 const { createClient } = window.supabase;
 const client = createClient(
   window.SUD_CONFIG.supabaseUrl,
@@ -398,6 +406,25 @@ async function resetPassword() {
   const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
 
   setAuthMessage(error ? error.message : "Password reset email sent.", !error);
+}
+
+
+// Homepage authentication buttons.
+const accountButton = $("accountButton");
+const heroAccountButton = $("heroAccountButton");
+
+if (accountButton) {
+  accountButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    openAuth("login");
+  });
+}
+
+if (heroAccountButton) {
+  heroAccountButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    openAuth("signup");
+  });
 }
 
 document.querySelectorAll("[data-page]").forEach(el => {
