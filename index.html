@@ -74,6 +74,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     .admin-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .danger-button{background:#3a161b;color:#ffb1b1;border:1px solid #693039;padding:8px 11px;border-radius:9px;cursor:pointer}
     .hidden{display:none!important}
+
+    .check-row{display:flex!important;align-items:center;gap:8px;color:var(--text)!important;margin-top:2px!important}.check-row input{width:18px!important;margin:0!important;accent-color:var(--accent)}
+    .game-page{padding-bottom:20px}.game-player-shell{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#000;min-height:72vh;box-shadow:0 25px 90px rgba(0,0,0,.35)}.game-player-frame{display:block;width:100%;height:72vh;border:0;background:#000}.game-player-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.game-player-title{font-size:26px;font-weight:800}.game-player-meta{color:var(--muted);font-size:13px}.game-menu{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:5}.game-menu.hidden{display:none}.game-menu-card{width:min(390px,calc(100% - 30px));background:#11141a;border:1px solid var(--line);border-radius:18px;padding:25px;box-shadow:0 30px 100px rgba(0,0,0,.6)}.game-menu-card h2{margin:0 0 8px}.game-menu-card p{color:var(--muted);line-height:1.5}.game-menu-actions{display:grid;gap:9px;margin-top:20px}.game-chat-panel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px}.game-chat-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.game-chat-head h3{margin:0}.game-chat-box{margin-top:12px;max-height:280px;overflow:auto}.game-chat-message{padding:9px 0;border-bottom:1px solid var(--line)}.game-chat-message:last-child{border-bottom:0}.game-chat-input{display:flex;gap:8px;margin-top:12px}.game-chat-input input{flex:1;padding:11px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);outline:none}.game-chat-disabled{color:var(--muted);padding:10px 0}.admin-game-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+
 </style>
 </head>
 <body>
@@ -87,7 +91,6 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       <a href="#" data-page="home">Home</a>
       <a href="#" data-page="games">Games</a>
       <a href="#" data-page="users">Users</a>
-      <a href="#" data-page="chat">Chat</a>
       <a href="https://zacharyceiley-jpg.github.io/secret-Unblocked-Listen/" target="_blank" rel="noopener">Listen</a>
     </nav>
 
@@ -128,7 +131,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       <div class="feature-grid">
         <article class="feature"><span>🎮</span><h3>Games</h3><p>Browse and eventually publish your own games.</p></article>
         <article class="feature"><span>👥</span><h3>Users</h3><p>Real profiles backed by your online database.</p></article>
-        <article class="feature"><span>💬</span><h3>Chat</h3><p>Talk with other Secret Unblocked Deluxe users.</p></article>
+        <article class="feature"><span>💬</span><h3>Game Chat</h3><p>Every game can have its own separate chat.</p></article>
         <article class="feature"><span>👑</span><h3>Management</h3><p>The owner account gets the tools needed to manage the platform.</p></article>
       </div>
     </section>
@@ -145,14 +148,15 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       </div>
       <div id="gameUploader" class="game-uploader hidden">
         <div class="section-heading" style="margin-top:0">
-          <div><p class="eyebrow">CREATOR TOOLS</p><h2>Submit a game</h2></div>
+          <div><p class="eyebrow" id="gameEditorEyebrow">CREATOR TOOLS</p><h2 id="gameEditorTitle">Submit a game</h2></div>
         </div>
-        <p class="small-note">Games are submitted as links. Use a direct HTTP or HTTPS URL to your hosted HTML game. New submissions start as pending until an admin publishes them.</p>
+        <p class="small-note">Games are submitted as links. Choose whether players should have a separate chat for this game.</p>
         <form id="gameForm" class="game-form">
           <label>Game title<input id="gameTitle" maxlength="100" required placeholder="e.g. Snow Rider 3D"></label>
           <label>Description<textarea id="gameDescription" maxlength="1000" rows="4" placeholder="Tell players what the game is about."></textarea></label>
           <label>Thumbnail URL<input id="gameThumbnail" type="url" placeholder="https://example.com/thumbnail.png"></label>
           <label>Game URL<input id="gameUrl" type="url" required placeholder="https://example.com/game.html"></label>
+          <label class="check-row"><input id="gameChatEnabled" type="checkbox" checked> <span>Enable chat for this game</span></label>
           <div class="hero-actions">
             <button class="primary" type="submit" id="submitGameButton">Submit Game</button>
             <button class="secondary" type="button" id="cancelGameUploader">Cancel</button>
@@ -161,17 +165,17 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
         </form>
       </div>
       <div id="myGamesSection" class="hidden" style="margin-top:30px">
-        <div class="section-heading">
-          <div><p class="eyebrow">YOUR SUBMISSIONS</p><h2>My Games</h2></div>
-        </div>
+        <div class="section-heading"><div><p class="eyebrow">YOUR SUBMISSIONS</p><h2>My Games</h2></div></div>
         <div id="myGamesGrid" class="user-grid"></div>
       </div>
       <div id="publicGamesSection">
-        <div class="section-heading">
-          <div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div>
-        </div>
+        <div class="section-heading"><div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div></div>
         <div id="gameGrid" class="user-grid"><div class="loading">Loading games…</div></div>
       </div>
+    </section>
+
+    <section id="gamePage" class="page">
+      <div id="gamePlayerRoot"></div>
     </section>
 
     <section id="usersPage" class="page">
@@ -220,10 +224,6 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       </div>
     </section>
 
-    <section id="chatPage" class="page">
-      <div class="page-title"><p class="eyebrow">COMMUNITY</p><h1>Chat</h1><p>Live chat is coming next.</p></div>
-      <div class="empty-state"><span>💬</span><h2>Chat is being built</h2><p>Once enabled, messages will be stored in the Deluxe database and update live.</p></div>
-    </section>
   </main>
 
   <div id="authModal" class="modal hidden" aria-hidden="true">
@@ -314,7 +314,6 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     if (page) page.classList.add("active");
     if (name === "users") loadUsers();
     if (name === "games") loadGames();
-    if (name === "chat") loadChat();
     if (name === "admin") loadAdminPanel();
   }
 
@@ -532,22 +531,19 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     const description = escapeHtml(g.description || "No description.");
     const creator = escapeHtml(g.profiles?.username || "Unknown creator");
     const thumb = g.thumbnail_url && validGameUrl(g.thumbnail_url)
-      ? `<img src="${escapeHtml(g.thumbnail_url)}" alt="">`
-      : "🎮";
-
+      ? `<img src="${escapeHtml(g.thumbnail_url)}" alt="">` : "🎮";
     return `
       <article class="game-card">
         <div class="game-thumb">${thumb}</div>
         <div class="game-card-body">
           <div class="game-title">${title}</div>
           <div class="game-description">${description}</div>
-          <div class="game-meta">${owner ? `Status: ${escapeHtml(g.status || "pending")}` : `Created by ${creator}`}</div>
+          <div class="game-meta">${owner ? `Status: ${escapeHtml(g.status || "pending")} · Chat: ${g.chat_enabled ? "On" : "Off"}` : `Created by ${creator} · Chat: ${g.chat_enabled ? "On" : "Off"}`}</div>
           <div class="game-card-actions">
-            ${!owner ? `<a class="primary" href="${escapeHtml(g.game_url)}" target="_blank" rel="noopener">▶ Play</a>` : `<a class="primary" href="${escapeHtml(g.game_url)}" target="_blank" rel="noopener">▶ Preview</a><button class="danger-button" onclick="deleteMyGame('${g.id}')">Delete</button>`}
+            ${!owner ? `<button class="primary" onclick="openGame('${g.id}')">▶ Play</button>` : `<button class="primary" onclick="openGame('${g.id}')">▶ Preview</button><button class="secondary" onclick="editMyGame('${g.id}')">Edit</button><button class="danger-button" onclick="deleteMyGame('${g.id}')">Delete</button>`}
           </div>
         </div>
-      </article>
-    `;
+      </article>`;
   }
 
   function renderGames(filter=""){
@@ -581,13 +577,13 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
 
     const publicQuery = sb.from("games")
-      .select("id,title,description,thumbnail_url,game_url,status,created_at,creator_id,profiles(username)")
+      .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)")
       .eq("status","published")
       .order("created_at",{ascending:false});
 
     const mineQuery = currentUser
       ? sb.from("games")
-          .select("id,title,description,thumbnail_url,game_url,status,created_at,creator_id,profiles(username)")
+          .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)")
           .eq("creator_id",currentUser.id)
           .order("created_at",{ascending:false})
       : Promise.resolve({data:[],error:null});
@@ -619,8 +615,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
   function closeGameUploader(){
     $("gameUploader").classList.add("hidden");
-    $("gameForm")?.reset();
-    $("gameFormMessage").textContent = "";
+    resetGameEditor();
   }
 
   function setGameFormMessage(message, error=false){
@@ -633,91 +628,156 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   async function submitGame(event){
     event.preventDefault();
     if (!sb || !currentUser) return openAuth("login");
-
-    const title = $("gameTitle").value.trim();
-    const description = $("gameDescription").value.trim();
-    const thumbnail_url = $("gameThumbnail").value.trim();
-    const game_url = $("gameUrl").value.trim();
-
-    if (!title) return setGameFormMessage("Enter a game title.", true);
-    if (!validGameUrl(game_url)) return setGameFormMessage("Enter a valid HTTP or HTTPS game URL.", true);
-    if (thumbnail_url && !validGameUrl(thumbnail_url)) return setGameFormMessage("The thumbnail URL must be HTTP or HTTPS.", true);
-
-    $("submitGameButton").disabled = true;
-    setGameFormMessage("Submitting game…");
-
-    const {error} = await sb.from("games").insert({
-      creator_id: currentUser.id,
-      title,
-      description,
-      thumbnail_url: thumbnail_url || null,
-      game_url,
-      status: "pending"
-    });
-
-    $("submitGameButton").disabled = false;
-
-    if (error) {
-      console.error(error);
-      return setGameFormMessage(error.message, true);
-    }
-
+    if (editingGameId) return updateGame(editingGameId);
+    const title=$("gameTitle").value.trim(), description=$("gameDescription").value.trim(), thumbnail_url=$("gameThumbnail").value.trim(), game_url=$("gameUrl").value.trim();
+    if(!title) return setGameFormMessage("Enter a game title.",true);
+    if(!validGameUrl(game_url)) return setGameFormMessage("Enter a valid HTTP or HTTPS game URL.",true);
+    if(thumbnail_url && !validGameUrl(thumbnail_url)) return setGameFormMessage("The thumbnail URL must be HTTP or HTTPS.",true);
+    $("submitGameButton").disabled=true; setGameFormMessage("Submitting game…");
+    const {error}=await sb.from("games").insert({creator_id:currentUser.id,title,description,thumbnail_url:thumbnail_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,status:"pending"});
+    $("submitGameButton").disabled=false;
+    if(error){console.error(error);return setGameFormMessage(error.message,true);}
     setGameFormMessage("Game submitted! It is waiting for admin approval.");
-    $("gameForm").reset();
-    await loadGames();
+    resetGameEditor(); await loadGames();
   }
 
   async function deleteMyGame(id){
     if (!sb || !currentUser) return;
     if (!confirm("Delete your game submission?")) return;
-
-    const {error} = await sb.from("games").delete()
-      .eq("id",id)
-      .eq("creator_id",currentUser.id);
-
+    const {error} = await sb.from("games").delete().eq("id",id).eq("creator_id",currentUser.id);
     if (error) return alert(error.message);
+    if (currentGame?.id === id) leaveGame();
     await loadGames();
   }
 
-  async function loadChat(){
-    const page = $("chatPage");
-    if (!sb || !currentUser) return;
-    const {data,error} = await sb.from("messages")
-      .select("id,sender_id,content,created_at")
-      .order("created_at",{ascending:true}).limit(100);
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    page.innerHTML = `
-      <div class="page-title"><p class="eyebrow">COMMUNITY</p><h1>Chat</h1>
-      <p>Talk with other Deluxe users.</p></div>
-      <div id="chatBox" style="background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:18px;min-height:280px;max-height:55vh;overflow:auto">
-        ${(data || []).map(m => `<div style="padding:9px 0;border-bottom:1px solid var(--line)"><b>${m.sender_id === currentUser.id ? "You" : "User"}</b><div style="color:var(--muted);margin-top:3px">${escapeHtml(m.content)}</div></div>`).join("") || '<div class="loading">No messages yet.</div>'}
-      </div>
-      <div style="display:flex;gap:8px;margin-top:12px">
-        <input id="chatInput" style="flex:1;padding:12px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text)" placeholder="Write a message…">
-        <button class="primary" id="chatSend">Send</button>
-      </div>
-    `;
-    $("chatSend").onclick = sendMessage;
+  async function editMyGame(id){
+    if (!sb || !currentUser) return openAuth("login");
+    const game = allMyGames.find(g => g.id === id);
+    if (!game) return;
+    editingGameId = id;
+    $("gameEditorEyebrow").textContent = "CREATOR TOOLS";
+    $("gameEditorTitle").textContent = "Edit your game";
+    $("submitGameButton").textContent = "Save Changes";
+    $("gameTitle").value = game.title || "";
+    $("gameDescription").value = game.description || "";
+    $("gameThumbnail").value = game.thumbnail_url || "";
+    $("gameUrl").value = game.game_url || "";
+    $("gameChatEnabled").checked = game.chat_enabled !== false;
+    $("gameUploader").classList.remove("hidden");
+    $("gameTitle").focus();
   }
 
-  async function sendMessage(){
-    if (!sb || !currentUser) return openAuth();
-    const input = $("chatInput");
-    const content = input.value.trim();
-    if (!content) return;
+  function resetGameEditor(){
+    editingGameId = null;
+    $("gameEditorTitle").textContent = "Submit a game";
+    $("submitGameButton").textContent = "Submit Game";
+    $("gameChatEnabled").checked = true;
+    $("gameForm")?.reset();
+    $("gameChatEnabled").checked = true;
+    $("gameFormMessage").textContent = "";
+  }
 
-    const {error} = await sb.from("messages").insert({
-      sender_id:currentUser.id,
-      content
-    });
-    if (error) return alert(error.message);
-    input.value = "";
-    await loadChat();
+  async function updateGame(id){
+    const title = $("gameTitle").value.trim();
+    const description = $("gameDescription").value.trim();
+    const thumbnail_url = $("gameThumbnail").value.trim();
+    const game_url = $("gameUrl").value.trim();
+    if (!title) return setGameFormMessage("Enter a game title.", true);
+    if (!validGameUrl(game_url)) return setGameFormMessage("Enter a valid HTTP or HTTPS game URL.", true);
+    if (thumbnail_url && !validGameUrl(thumbnail_url)) return setGameFormMessage("The thumbnail URL must be HTTP or HTTPS.", true);
+    const {error} = await sb.from("games").update({title,description,thumbnail_url:thumbnail_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,updated_at:new Date().toISOString()}).eq("id",id).eq("creator_id",currentUser.id);
+    if (error) return setGameFormMessage(error.message,true);
+    setGameFormMessage("Game updated.");
+    editingGameId = null;
+    resetGameEditor();
+    $("gameUploader").classList.add("hidden");
+    await loadGames();
+  }
+
+  let currentGame = null;
+  let editingGameId = null;
+  let gameChatRefreshTimer = null;
+
+  async function openGame(id){
+    if (!sb) return;
+    const {data,error} = await sb.from("games").select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)").eq("id",id).maybeSingle();
+    if (error || !data) return alert(error?.message || "Game not found.");
+    if (data.status !== "published" && data.creator_id !== currentUser?.id && currentRole !== "admin") return alert("This game is not published.");
+    currentGame = data;
+    clearInterval(gameChatRefreshTimer);
+    showPage("game");
+    renderGamePage();
+    if (data.chat_enabled) await loadGameChat();
+  }
+
+  function leaveGame(){
+    clearInterval(gameChatRefreshTimer);
+    currentGame = null;
+    $("gamePlayerRoot").innerHTML = "";
+    showPage("games");
+  }
+
+  function renderGamePage(){
+    const g=currentGame;
+    $("gamePlayerRoot").innerHTML = `
+      <div class="game-player-top">
+        <div><div class="game-player-title">${escapeHtml(g.title)}</div><div class="game-player-meta">Created by ${escapeHtml(g.profiles?.username || "Unknown")}</div></div>
+        <button class="secondary" onclick="openGameMenu()">☰ Menu</button>
+      </div>
+      <div class="game-player-shell">
+        <iframe class="game-player-frame" src="${escapeHtml(g.game_url)}" title="${escapeHtml(g.title)}" allow="fullscreen; gamepad; autoplay" loading="eager"></iframe>
+        <div id="gameMenu" class="game-menu hidden">
+          <div class="game-menu-card">
+            <p class="eyebrow">PAUSED MENU</p><h2>${escapeHtml(g.title)}</h2><p>The game stays open behind this menu.</p>
+            <div class="game-menu-actions">
+              <button class="primary" onclick="closeGameMenu()">Resume Game</button>
+              ${g.chat_enabled ? `<button class="secondary" onclick="closeGameMenu();document.getElementById('gameChatPanel')?.scrollIntoView({behavior:'smooth'})">Open Chat</button>` : ""}
+              <button class="secondary" onclick="leaveGame()">Leave Game</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      ${g.chat_enabled ? `<div id="gameChatPanel" class="game-chat-panel"><div class="game-chat-head"><h3>💬 ${escapeHtml(g.title)} Chat</h3><span class="admin-status">Resets daily at 12:00 AM Australia time</span></div><div id="gameChatBox" class="game-chat-box"><div class="loading">Loading chat…</div></div><div class="game-chat-input"><input id="gameChatInput" maxlength="1000" placeholder="Message this game's chat…"><button class="primary" id="gameChatSend">Send</button></div></div>` : `<div class="game-chat-panel"><div class="game-chat-disabled">💬 Chat is disabled for this game.</div></div>`}`;
+    if (g.chat_enabled) {
+      $("gameChatSend").onclick=sendGameMessage;
+      $("gameChatInput").addEventListener("keydown",e=>{if(e.key==="Enter")sendGameMessage()});
+      gameChatRefreshTimer=setInterval(()=>loadGameChat(true),15000);
+    }
+  }
+
+  function openGameMenu(){ $("gameMenu")?.classList.remove("hidden"); }
+  function closeGameMenu(){ $("gameMenu")?.classList.add("hidden"); }
+
+  function australiaMidnightISO(){
+    const now=new Date();
+    const parts=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Sydney",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(now);
+    const get=t=>parts.find(p=>p.type===t)?.value||"00";
+    const y=get("year"),m=get("month"),d=get("day");
+    const localMidnight=new Date(Date.UTC(Number(y),Number(m)-1,Number(d),0,0,0));
+    const probe=new Date(localMidnight.getTime()+12*60*60*1000);
+    const tzParts=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Sydney",timeZoneName:"longOffset",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23"}).formatToParts(probe);
+    const offset=(tzParts.find(p=>p.type==="timeZoneName")?.value||"GMT+10:00").replace("GMT","");
+    const sign=offset.startsWith("-")?-1:1;
+    const [oh,om]=(offset.slice(1).split(":" )).map(Number);
+    const utcMidnight=Date.UTC(Number(y),Number(m)-1,Number(d),0,0,0)-sign*(oh*60+om)*60000;
+    return new Date(utcMidnight).toISOString();
+  }
+
+  async function loadGameChat(silent=false){
+    if (!sb || !currentUser || !currentGame || !currentGame.chat_enabled) return;
+    const {data,error}=await sb.from("messages").select("id,sender_id,content,created_at,profiles(username)").eq("game_id",currentGame.id).gte("created_at",australiaMidnightISO()).order("created_at",{ascending:true}).limit(200);
+    if (error) { if(!silent) console.error(error); return; }
+    const box=$("gameChatBox"); if(!box) return;
+    box.innerHTML=(data||[]).map(m=>`<div class="game-chat-message"><b>${escapeHtml(m.sender_id===currentUser.id?"You":m.profiles?.username||"User")}</b><div style="color:var(--muted);margin-top:3px">${escapeHtml(m.content)}</div></div>`).join("")||'<div class="loading">No messages yet. Start the chat!</div>';
+    box.scrollTop=box.scrollHeight;
+  }
+
+  async function sendGameMessage(){
+    if (!sb || !currentUser) return openAuth("login");
+    if (!currentGame?.chat_enabled) return;
+    const input=$("gameChatInput"); const content=input.value.trim(); if(!content) return;
+    const {error}=await sb.from("messages").insert({sender_id:currentUser.id,game_id:currentGame.id,content});
+    if(error) return alert(error.message); input.value=""; await loadGameChat();
   }
 
   async function loadAdminPanel(){
@@ -745,10 +805,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       sb.from("profiles").select("id", {count:"exact", head:true}),
       sb.from("games").select("id", {count:"exact", head:true}),
       sb.from("games").select("id", {count:"exact", head:true}).eq("status","published"),
-      sb.from("messages").select("id", {count:"exact", head:true}),
+      sb.from("messages").select("id", {count:"exact", head:true}).not("game_id","is",null),
       sb.from("profiles").select("id,username,avatar_url,bio").order("created_at",{ascending:false}).limit(8),
-      sb.from("games").select("id,title,description,thumbnail_url,game_url,status,created_at,creator_id,profiles(username)").order("created_at",{ascending:false}).limit(8),
-      sb.from("messages").select("id,sender_id,content,created_at").order("created_at",{ascending:false}).limit(15)
+      sb.from("games").select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)").order("created_at",{ascending:false}).limit(8),
+      sb.from("messages").select("id,sender_id,content,created_at,game_id,profiles(username)").order("created_at",{ascending:false}).limit(15)
     ]);
 
     $("adminUserCount").textContent = usersResult.count ?? "0";
@@ -778,8 +838,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
           <div class="admin-status">${escapeHtml(g.status || "unknown")}</div>
           <p style="color:var(--muted);line-height:1.5">${escapeHtml(g.description || "No description.")}</p>
           <div class="role">Creator: ${escapeHtml(g.creator_id || "unknown")}</div>
-          <div class="admin-actions">
+          <div class="admin-game-actions">
             ${g.status !== "published" ? `<button class="primary" onclick="setGameStatus('${g.id}','published')">Publish</button>` : `<button class="secondary" onclick="setGameStatus('${g.id}','pending')">Unpublish</button>`}
+            <button class="secondary" onclick="openGame('${g.id}')">Open Game</button>
+            ${g.chat_enabled ? `<button class="secondary" onclick="openGameChatFromAdmin('${g.id}')">💬 Chat</button>` : `<button class="secondary" onclick="alert('Chat is disabled for this game.')">💬 Chat (off)</button>`}
             <button class="danger-button" onclick="deleteGameAdmin('${g.id}')">Delete</button>
           </div>
         </article>
@@ -791,13 +853,19 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     } else {
       $("adminMessages").innerHTML = (recentMessagesResult.data || []).map(m => `
         <div class="admin-row">
-          <div><strong>${escapeHtml(m.sender_id === currentUser.id ? "You" : "User")}</strong>
-          <span class="admin-status">${escapeHtml(new Date(m.created_at).toLocaleString())}</span></div>
+          <div><strong>${escapeHtml(m.profiles?.username || (m.sender_id === currentUser.id ? "You" : "User"))}</strong>
+          <span class="admin-status">${escapeHtml(new Date(m.created_at).toLocaleString())}</span>
+          ${m.game_id ? `<button class="secondary" style="margin-left:8px" onclick="openGameChatFromAdmin('${m.game_id}')">Open game chat</button>` : ""}</div>
           <div style="color:var(--muted);margin-top:5px;line-height:1.5">${escapeHtml(m.content)}</div>
           <div class="admin-actions"><button class="danger-button" onclick="deleteMessageAdmin('${m.id}')">Delete message</button></div>
         </div>
       `).join("") || '<div class="loading">No messages yet.</div>';
     }
+  }
+
+  async function openGameChatFromAdmin(id){
+    await openGame(id);
+    setTimeout(()=>$("gameChatPanel")?.scrollIntoView({behavior:"smooth"}),300);
   }
 
   async function setGameStatus(id,status){
@@ -845,6 +913,13 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
     if (e.target.closest("[data-close-auth]")) closeModal("authModal");
     if (e.target.closest("[data-close-profile]")) closeModal("profileModal");
+  });
+
+
+  document.addEventListener("keydown", e => {
+    if(e.key !== "Escape" || !currentGame) return;
+    const menu=$("gameMenu");
+    if(menu?.classList.contains("hidden")) openGameMenu(); else closeGameMenu();
   });
 
   $("accountButton").onclick = () => currentUser ? viewProfile(currentUser.id) : openAuth("login");
