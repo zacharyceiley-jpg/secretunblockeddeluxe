@@ -76,7 +76,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     .hidden{display:none!important}
 
     .check-row{display:flex!important;align-items:center;gap:8px;color:var(--text)!important;margin-top:2px!important}.check-row input{width:18px!important;margin:0!important;accent-color:var(--accent)}
-    .game-page{padding-bottom:20px}.game-player-shell{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#000;min-height:72vh;box-shadow:0 25px 90px rgba(0,0,0,.35)}.game-player-frame{display:block;width:100%;height:72vh;border:0;background:#000}.game-player-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.game-player-title{font-size:26px;font-weight:800}.game-player-meta{color:var(--muted);font-size:13px}.game-menu{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:5}.game-menu.hidden{display:none}.game-menu-card{width:min(390px,calc(100% - 30px));background:#11141a;border:1px solid var(--line);border-radius:18px;padding:25px;box-shadow:0 30px 100px rgba(0,0,0,.6)}.game-menu-card h2{margin:0 0 8px}.game-menu-card p{color:var(--muted);line-height:1.5}.game-menu-actions{display:grid;gap:9px;margin-top:20px}.game-chat-panel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px}.game-chat-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.game-chat-head h3{margin:0}.game-chat-box{margin-top:12px;max-height:280px;overflow:auto}.game-chat-message{padding:9px 0;border-bottom:1px solid var(--line)}.game-chat-message:last-child{border-bottom:0}.game-chat-input{display:flex;gap:8px;margin-top:12px}.game-chat-input input{flex:1;padding:11px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);outline:none}.game-chat-disabled{color:var(--muted);padding:10px 0}.admin-game-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .game-page{padding-bottom:20px}.game-player-shell{position:relative;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:#000;min-height:72vh;box-shadow:0 25px 90px rgba(0,0,0,.35)}.game-player-frame{display:block;width:100%;height:72vh;border:0;background:#000}.game-player-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}.game-player-title{font-size:26px;font-weight:800}.game-player-meta{color:var(--muted);font-size:13px}.game-menu{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(8px);display:grid;place-items:center;z-index:5}.game-menu.hidden{display:none}.game-menu-card{width:min(390px,calc(100% - 30px));background:#11141a;border:1px solid var(--line);border-radius:18px;padding:25px;box-shadow:0 30px 100px rgba(0,0,0,.6)}.game-menu-card h2{margin:0 0 8px}.game-menu-card p{color:var(--muted);line-height:1.5}.game-menu-actions{display:grid;gap:9px;margin-top:20px}.game-menu-hint{font-size:12px;color:var(--muted);text-align:center;margin-top:14px}.game-chat-panel{margin-top:14px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:15px}.game-chat-head{display:flex;justify-content:space-between;align-items:center;gap:10px}.game-chat-head h3{margin:0}.game-chat-box{margin-top:12px;max-height:280px;overflow:auto}.game-chat-message{padding:9px 0;border-bottom:1px solid var(--line)}.game-chat-message:last-child{border-bottom:0}.game-chat-input{display:flex;gap:8px;margin-top:12px}.game-chat-input input{flex:1;padding:11px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);outline:none}.game-chat-disabled{color:var(--muted);padding:10px 0}.admin-game-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 
 </style>
 </head>
@@ -731,8 +731,11 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
             <p class="eyebrow">PAUSED MENU</p><h2>${escapeHtml(g.title)}</h2><p>The game stays open behind this menu.</p>
             <div class="game-menu-actions">
               <button class="primary" onclick="closeGameMenu()">Resume Game</button>
+              <button class="secondary" onclick="toggleGameFullscreen()">⛶ Fullscreen</button>
               ${g.chat_enabled ? `<button class="secondary" onclick="closeGameMenu();document.getElementById('gameChatPanel')?.scrollIntoView({behavior:'smooth'})">Open Chat</button>` : ""}
               <button class="secondary" onclick="leaveGame()">Leave Game</button>
+            </div>
+            <div class="game-menu-hint">Press <b>M</b> to open/close this menu</div>
             </div>
           </div>
         </div>
@@ -747,6 +750,22 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
   function openGameMenu(){ $("gameMenu")?.classList.remove("hidden"); }
   function closeGameMenu(){ $("gameMenu")?.classList.add("hidden"); }
+
+  async function toggleGameFullscreen(){
+    const shell=$("gamePlayerRoot")?.querySelector(".game-player-shell");
+    const frame=$("gamePlayerRoot")?.querySelector(".game-player-frame");
+    if (!shell || !frame) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      await (frame.requestFullscreen ? frame.requestFullscreen() : shell.requestFullscreen());
+    } catch (err) {
+      console.error("Fullscreen error:", err);
+      alert("Fullscreen is not available in this browser.");
+    }
+  }
 
   function australiaMidnightISO(){
     const now=new Date();
@@ -917,9 +936,20 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
 
   document.addEventListener("keydown", e => {
-    if(e.key !== "Escape" || !currentGame) return;
-    const menu=$("gameMenu");
-    if(menu?.classList.contains("hidden")) openGameMenu(); else closeGameMenu();
+    if (!currentGame) return;
+    // M is the reliable in-game menu shortcut. Escape also toggles it when the
+    // browser is not currently handling Escape for fullscreen.
+    if (e.key.toLowerCase() === "m") {
+      if (e.target.matches("input,textarea")) return;
+      e.preventDefault();
+      const menu=$("gameMenu");
+      if(menu?.classList.contains("hidden")) openGameMenu(); else closeGameMenu();
+      return;
+    }
+    if(e.key === "Escape" && !document.fullscreenElement) {
+      const menu=$("gameMenu");
+      if(menu?.classList.contains("hidden")) openGameMenu(); else closeGameMenu();
+    }
   });
 
   $("accountButton").onclick = () => currentUser ? viewProfile(currentUser.id) : openAuth("login");
