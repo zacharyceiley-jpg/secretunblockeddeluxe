@@ -47,6 +47,17 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 .user-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}.user-card{background:var(--panel);border:1px solid var(--line);padding:18px;border-radius:15px;cursor:pointer}.user-card:hover{border-color:#4b5260}.avatar{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#333a48,#1f2430);font-weight:800;font-size:20px;overflow:hidden}.avatar img{width:100%;height:100%;object-fit:cover}.user-name{font-weight:700;margin-top:14px}.role{font-size:12px;color:var(--accent2);margin-top:4px}.loading{color:var(--muted)}
 .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:20px}.modal.hidden{display:none}.modal-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.72);backdrop-filter:blur(8px)}.modal-card{position:relative;width:min(440px,100%);background:#11141a;border:1px solid var(--line);border-radius:18px;padding:28px;box-shadow:0 30px 100px rgba(0,0,0,.5);z-index:1}.modal-close{position:absolute;right:15px;top:12px;border:0;background:none;color:var(--muted);font-size:28px}.auth-tabs{display:flex;gap:5px;background:#0b0d11;border-radius:10px;padding:4px;margin-bottom:28px}.auth-tab{flex:1;border:0;background:transparent;color:var(--muted);padding:9px;border-radius:8px}.auth-tab.active{background:var(--panel2);color:var(--text)}.auth-form h2{margin:0 0 22px;font-size:28px}.auth-form label{display:block;font-size:13px;color:var(--muted);margin:14px 0 7px}.auth-form input{width:100%;padding:12px 13px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);outline:none}.auth-form input:focus{border-color:var(--accent)}.full{width:100%;margin-top:20px}.text-button{display:block;margin:13px auto 0;border:0;background:none;color:var(--accent2);font-size:13px}.small-note{font-size:12px;color:var(--muted);line-height:1.5}.auth-message{min-height:22px;margin-top:16px;font-size:13px;color:var(--muted)}.profile-card{width:min(520px,100%)}.profile-head{display:flex;align-items:center;gap:16px}.profile-head .avatar{width:72px;height:72px}.profile-head h2{margin:0}.profile-bio{color:var(--muted);line-height:1.6;margin:22px 0}.profile-meta{font-size:13px;color:var(--muted);padding-top:15px;border-top:1px solid var(--line)}
 .hidden{display:none!important}
+    .inbox-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}
+    .inbox-list{display:grid;gap:10px}
+    .inbox-message{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:17px;cursor:pointer}
+    .inbox-message.unread{border-color:var(--accent);background:linear-gradient(135deg,rgba(124,92,255,.13),var(--panel))}
+    .inbox-message-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .inbox-message-head strong{font-size:15px}
+    .inbox-message-time{font-size:12px;color:var(--muted)}
+    .inbox-message-preview{color:var(--muted);margin-top:8px;line-height:1.5}
+    .unread-badge{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#ff4d67;color:white;font-size:11px;font-weight:800;vertical-align:middle;margin-left:5px}
+    .inbox-dot{width:8px;height:8px;border-radius:50%;background:#ff4d67;display:inline-block;margin-right:7px}
+
 @media(max-width:850px){.nav{display:none}.hero{grid-template-columns:1fr}.feature-grid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.topbar{padding:0 14px}.brand span:last-child{display:none}main{padding:35px 16px}.feature-grid{grid-template-columns:1fr}.hero h1{font-size:45px}}
 
@@ -93,6 +104,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       <a href="#" data-page="home">Home</a>
       <a href="#" data-page="games">Games</a>
       <a href="#" data-page="users">Users</a>
+      <a href="#" data-page="inbox" id="inboxNavLink">📩 Inbox <span id="unreadBadge" class="unread-badge hidden">0</span></a>
       <a href="https://zacharyceiley-jpg.github.io/secret-Unblocked-Listen/" target="_blank" rel="noopener">Listen</a>
     </nav>
 
@@ -190,6 +202,22 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       <div id="usersGrid" class="user-grid"><div class="loading">Loading users…</div></div>
     </section>
 
+
+    <section id="inboxPage" class="page">
+      <div class="page-title">
+        <p class="eyebrow">MESSAGES</p>
+        <h1>Inbox</h1>
+        <p>Messages sent directly to you by Secret Unblocked Deluxe administrators.</p>
+      </div>
+      <div class="inbox-toolbar">
+        <div id="inboxStatus" class="small-note">Sign in to view your messages.</div>
+        <button class="secondary" id="inboxRefresh">Refresh</button>
+      </div>
+      <div id="inboxList" class="inbox-list">
+        <div class="empty-state"><span>📩</span><h2>Your inbox</h2><p>Sign in to view admin messages.</p></div>
+      </div>
+    </section>
+
     <section id="adminPage" class="page">
       <div class="page-title">
         <p class="eyebrow">ADMINISTRATION</p>
@@ -209,6 +237,31 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
           <article class="feature"><span>🎮</span><h3 id="adminGameCount">—</h3><p>Total games</p></article>
           <article class="feature"><span>💬</span><h3 id="adminMessageCount">—</h3><p>Total messages</p></article>
           <article class="feature"><span>🟢</span><h3 id="adminPublishedCount">—</h3><p>Published games</p></article>
+        </div>
+
+
+        <div class="section-heading" style="margin-top:30px">
+          <div><p class="eyebrow">DIRECT MESSAGES</p><h2>Message a user</h2></div>
+        </div>
+        <div class="game-uploader">
+          <div class="game-form">
+            <label>Search users<input id="adminMessageUserSearch" type="search" placeholder="Search by username…"></label>
+            <div id="adminMessageUsers" class="user-grid"><div class="loading">Loading users…</div></div>
+            <div id="adminSelectedUser" class="small-note">No user selected.</div>
+            <label>Message<textarea id="adminMessageText" rows="4" maxlength="2000" placeholder="Write an admin message…"></textarea></label>
+            <button class="primary" id="adminSendMessage">Send Admin Message</button>
+            <div id="adminMessageStatus" class="auth-message"></div>
+          </div>
+        </div>
+
+        <div class="section-heading" style="margin-top:30px">
+          <div><p class="eyebrow">MODERATION</p><h2>Suspensions & bans</h2></div>
+        </div>
+        <div class="game-uploader">
+          <div class="game-form">
+            <label>Search users<input id="adminModerationSearch" type="search" placeholder="Search users…"></label>
+            <div id="adminModerationUsers" class="user-grid"><div class="loading">Loading users…</div></div>
+          </div>
         </div>
 
         <div class="section-heading">
@@ -348,8 +401,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     const page = $(name + "Page");
     if (page) page.classList.add("active");
     if (name === "users") loadUsers();
+    if (name === "inbox" && !currentUser) openAuth("login");
     if (name === "games") loadGames();
     if (name === "admin") loadAdminPanel();
+    if (name === "inbox") loadInbox();
   }
 
   function initials(name){
@@ -385,6 +440,141 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     }
     updateAccountUI();
     if (currentUser) loadUserInbox();
+  }
+
+
+  function updateUnreadBadgeUI(){
+    const badge = $("unreadBadge");
+    if (!badge) return;
+    badge.textContent = String(unreadMessageCount);
+    badge.classList.toggle("hidden", !currentUser || unreadMessageCount <= 0);
+  }
+
+  async function updateUnreadBadge(){
+    if (!sb || !currentUser) {
+      unreadMessageCount = 0;
+      updateUnreadBadgeUI();
+      return;
+    }
+    const {count,error} = await sb.from("messages")
+      .select("id",{count:"exact",head:true})
+      .eq("recipient_id",currentUser.id)
+      .is("game_id",null)
+      .is("read_at",null);
+    if (error) {
+      console.error("Unread message check:", error);
+      return;
+    }
+    unreadMessageCount = count || 0;
+    updateUnreadBadgeUI();
+  }
+
+  async function loadInbox(){
+    const list = $("inboxList");
+    if (!list) return;
+    if (!currentUser) {
+      $("inboxStatus").textContent = "Sign in to view your messages.";
+      list.innerHTML = '<div class="empty-state"><span>🔒</span><h2>Sign in required</h2><p>Log in to access your inbox.</p></div>';
+      updateUnreadBadgeUI();
+      return;
+    }
+
+    list.innerHTML = '<div class="loading">Loading messages…</div>';
+    const {data,error} = await sb.from("messages")
+      .select("id,sender_id,content,created_at,read_at,profiles(username)")
+      .eq("recipient_id",currentUser.id)
+      .is("game_id",null)
+      .order("created_at",{ascending:false})
+      .limit(100);
+
+    if (error) {
+      console.error(error);
+      list.innerHTML = `<div class="empty-state"><span>⚠️</span><h2>Unable to load inbox</h2><p>${escapeHtml(error.message)}</p></div>`;
+      return;
+    }
+
+    const messages = data || [];
+    $("inboxStatus").textContent = `${messages.filter(m=>!m.read_at).length} unread · ${messages.length} total`;
+
+    if (!messages.length) {
+      list.innerHTML = '<div class="empty-state"><span>📭</span><h2>No messages yet</h2><p>Admin messages will appear here.</p></div>';
+      await updateUnreadBadge();
+      return;
+    }
+
+    list.innerHTML = messages.map(m => `
+      <article class="inbox-message ${m.read_at ? "" : "unread"}" onclick="openInboxMessage('${m.id}')">
+        <div class="inbox-message-head">
+          <strong>${m.read_at ? "" : '<span class="inbox-dot"></span>'}${escapeHtml(m.profiles?.username || "Administrator")}</strong>
+          <span class="inbox-message-time">${escapeHtml(new Date(m.created_at).toLocaleString())}</span>
+        </div>
+        <div class="inbox-message-preview">${escapeHtml(m.content)}</div>
+      </article>
+    `).join("");
+
+    await updateUnreadBadge();
+  }
+
+  async function openInboxMessage(id){
+    if (!sb || !currentUser) return;
+    const {data,error} = await sb.from("messages")
+      .select("id,content,created_at,read_at,profiles(username)")
+      .eq("id",id)
+      .eq("recipient_id",currentUser.id)
+      .is("game_id",null)
+      .maybeSingle();
+
+    if (error || !data) return alert(error?.message || "Message not found.");
+
+    if (!data.read_at) {
+      const {error:readError} = await sb.from("messages")
+        .update({read_at:new Date().toISOString()})
+        .eq("id",id)
+        .eq("recipient_id",currentUser.id)
+        .is("game_id",null);
+      if (readError) return alert(readError.message);
+    }
+
+    alert(`${data.profiles?.username || "Administrator"} wrote:\\n\\n${data.content}`);
+    await loadInbox();
+  }
+
+  async function enforceCurrentUserBan(){
+    if (!sb || !currentUser) return false;
+    const {data,error} = await sb.from("user_bans")
+      .select("banned_until,reason")
+      .eq("user_id",currentUser.id)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Ban check:", error);
+      return false;
+    }
+    if (!data) return false;
+
+    const permanent = !data.banned_until;
+    const until = data.banned_until ? new Date(data.banned_until) : null;
+    if (!permanent && until <= new Date()) {
+      await sb.from("user_bans").delete().eq("user_id",currentUser.id);
+      return false;
+    }
+
+    const message = permanent
+      ? `Your Secret Unblocked Deluxe account has been permanently banned.${data.reason ? `\\n\\nReason: ${data.reason}` : ""}`
+      : `Your Secret Unblocked Deluxe account is suspended until ${until.toLocaleString("en-AU")}.${data.reason ? `\\n\\nReason: ${data.reason}` : ""}`;
+
+    await sb.auth.signOut();
+    currentUser = null;
+    currentProfile = null;
+    currentRole = "user";
+    clearInterval(inboxRefreshTimer);
+    clearInterval(banCheckTimer);
+    updateAccountUI();
+    unreadMessageCount = 0;
+    updateUnreadBadgeUI();
+    showPage("home");
+    alert(message);
+    return true;
   }
 
   async function loadCurrentProfile(){
@@ -455,6 +645,8 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       currentUser = data?.user || data?.session?.user || null;
       await loadCurrentProfile();
       updateAccountUI();
+      await enforceCurrentUserBan();
+      await updateUnreadBadge();
 
       $("loginSubmit").disabled = false;
       setAuthMessage("Signed in.");
@@ -515,6 +707,8 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     currentUser = null;
     currentProfile = null;
     currentRole = "user";
+    unreadMessageCount = 0;
+    updateUnreadBadgeUI();
     updateAccountUI();
     showPage("home");
   }
@@ -759,6 +953,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   let currentGame = null;
   let editingGameId = null;
   let gameChatRefreshTimer = null;
+  let unreadMessageCount = 0;
+  let inboxRefreshTimer = null;
+  let banCheckTimer = null;
+
 
   async function openGame(id){
     if (!sb) return;
@@ -861,6 +1059,129 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     if(error) return alert(error.message); input.value=""; await loadGameChat();
   }
 
+
+  let adminSelectedMessageUser = null;
+  let adminAllUsers = [];
+
+  function renderAdminMessageUsers(){
+    const root = $("adminMessageUsers");
+    if (!root) return;
+    const q = ($("adminMessageUserSearch")?.value || "").trim().toLowerCase();
+    const users = adminAllUsers.filter(u => String(u.username || "").toLowerCase().includes(q)).slice(0,30);
+    root.innerHTML = users.map(u => `
+      <article class="user-card" onclick="selectAdminMessageUser('${u.id}')">
+        <div class="avatar">${u.avatar_url ? `<img src="${escapeHtml(u.avatar_url)}" alt="">` : escapeHtml(initials(u.username))}</div>
+        <div class="user-name">${escapeHtml(u.username || "User")}</div>
+        <div class="role">${u.id === currentUser?.id ? "You" : "Deluxe user"}</div>
+      </article>
+    `).join("") || '<div class="loading">No users found.</div>';
+  }
+
+  function selectAdminMessageUser(id){
+    const user = adminAllUsers.find(u => u.id === id);
+    if (!user) return;
+    adminSelectedMessageUser = user;
+    $("adminSelectedUser").textContent = `Sending as admin to: ${user.username || "User"}`;
+    renderAdminMessageUsers();
+  }
+
+  async function sendAdminDirectMessage(){
+    if (!currentUser || currentRole !== "admin" || !adminSelectedMessageUser) return alert("Select a user first.");
+    const input = $("adminMessageText");
+    const content = input.value.trim();
+    if (!content) return alert("Enter a message.");
+
+    const {error} = await sb.from("messages").insert({
+      sender_id: currentUser.id,
+      recipient_id: adminSelectedMessageUser.id,
+      game_id: null,
+      content
+    });
+
+    if (error) return alert(error.message);
+    input.value = "";
+    $("adminMessageStatus").textContent = `Message sent to ${adminSelectedMessageUser.username || "user"}.`;
+    await loadAdminPanel();
+  }
+
+  function renderAdminModerationUsers(){
+    const root = $("adminModerationUsers");
+    if (!root) return;
+    const q = ($("adminModerationSearch")?.value || "").trim().toLowerCase();
+    const users = adminAllUsers.filter(u => String(u.username || "").toLowerCase().includes(q)).slice(0,50);
+
+    root.innerHTML = users.map(u => {
+      const ban = u._ban;
+      let status = '<span class="admin-status">Active</span>';
+      if (ban) {
+        const permanent = !ban.banned_until;
+        const active = permanent || new Date(ban.banned_until) > new Date();
+        if (active) status = `<span class="admin-status">${permanent ? "Permanently banned" : "Suspended until " + new Date(ban.banned_until).toLocaleString("en-AU")}</span>`;
+      }
+      const self = u.id === currentUser?.id;
+      return `
+        <article class="user-card">
+          <div class="avatar">${u.avatar_url ? `<img src="${escapeHtml(u.avatar_url)}" alt="">` : escapeHtml(initials(u.username))}</div>
+          <div class="user-name">${escapeHtml(u.username || "User")}</div>
+          <div style="margin-top:7px">${status}</div>
+          <div class="admin-actions">
+            ${self ? '<span class="small-note">You cannot moderate your own account.</span>' : `
+              <button class="secondary" onclick="suspendUser('${u.id}')">Suspend</button>
+              <button class="danger-button" onclick="banUser('${u.id}')">Permanent Ban</button>
+              ${ban ? `<button class="secondary" onclick="unbanUser('${u.id}')">Unban</button>` : ""}
+            `}
+          </div>
+        </article>`;
+    }).join("") || '<div class="loading">No users found.</div>';
+  }
+
+  async function loadAdminUserTools(){
+    if (!currentUser || currentRole !== "admin") return;
+    const {data,error} = await sb.from("profiles").select("id,username,avatar_url,bio").order("username");
+    if (error) return console.error(error);
+    const {data:bans,error:banError} = await sb.from("user_bans").select("user_id,banned_until,reason");
+    if (banError) return console.error(banError);
+
+    const banMap = Object.fromEntries((bans || []).map(b => [b.user_id,b]));
+    adminAllUsers = (data || []).map(u => ({...u,_ban:banMap[u.id] || null}));
+    renderAdminMessageUsers();
+    renderAdminModerationUsers();
+  }
+
+  async function suspendUser(id){
+    if (currentRole !== "admin" || id === currentUser?.id) return;
+    const raw = prompt("Suspend for how many hours? (Example: 24)");
+    if (raw === null) return;
+    const hours = Number(raw);
+    if (!Number.isFinite(hours) || hours <= 0) return alert("Enter a number greater than 0.");
+    const reason = prompt("Reason for suspension (optional):") || "";
+    const banned_until = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+
+    const {error} = await sb.from("user_bans").upsert({
+      user_id:id,banned_until,reason,updated_at:new Date().toISOString()
+    });
+    if (error) return alert(error.message);
+    await loadAdminUserTools();
+  }
+
+  async function banUser(id){
+    if (currentRole !== "admin" || id === currentUser?.id) return;
+    if (!confirm("Permanently ban this user?")) return;
+    const reason = prompt("Reason for permanent ban (optional):") || "";
+    const {error} = await sb.from("user_bans").upsert({
+      user_id:id,banned_until:null,reason,updated_at:new Date().toISOString()
+    });
+    if (error) return alert(error.message);
+    await loadAdminUserTools();
+  }
+
+  async function unbanUser(id){
+    if (currentRole !== "admin") return;
+    const {error} = await sb.from("user_bans").delete().eq("user_id",id);
+    if (error) return alert(error.message);
+    await loadAdminUserTools();
+  }
+
   async function loadAdminPanel(){
     const access = $("adminAccessMessage");
     const dashboard = $("adminDashboard");
@@ -873,6 +1194,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
     access.classList.add("hidden");
     dashboard.classList.remove("hidden");
+    await loadAdminUserTools();
 
     const [
       usersResult,
@@ -886,7 +1208,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       sb.from("profiles").select("id", {count:"exact", head:true}),
       sb.from("games").select("id", {count:"exact", head:true}),
       sb.from("games").select("id", {count:"exact", head:true}).eq("status","published"),
-      sb.from("messages").select("id", {count:"exact", head:true}).not("game_id","is",null),
+      sb.from("messages").select("id", {count:"exact", head:true}),
       sb.from("profiles").select("id,username,avatar_url,bio").order("created_at",{ascending:false}).limit(8),
       sb.from("games").select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)").order("created_at",{ascending:false}).limit(8),
       sb.from("messages").select("id,sender_id,recipient_id,content,created_at,game_id,profiles(username)").order("created_at",{ascending:false}).limit(15)
@@ -1120,17 +1442,17 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   $("signupSubmit").onclick = signup;
   $("resetPassword").onclick = resetPassword;
   $("adminRefresh").onclick = loadAdminPanel;
+  $("inboxRefresh").onclick = loadInbox;
+  $("adminSendMessage").onclick = sendAdminDirectMessage;
+  $("adminMessageUserSearch").oninput = renderAdminMessageUsers;
+  $("adminModerationSearch").oninput = renderAdminModerationUsers;
   $("adminSendMessage").onclick = sendAdminMessage;
   $("adminUserSearch").oninput = renderAdminUserPicker;
   $("adminBanSearch").oninput = renderAdminBanUsers;
 
   $("menuButton").onclick = () => {
     if (!currentUser) return openAuth("login");
-    if (currentRole === "admin") {
-      showPage("admin");
-      return;
-    }
-    alert("You are signed in as " + (currentProfile?.username || "a user") + ".");
+    showPage("inbox");
   };
 
   if (sb) {
