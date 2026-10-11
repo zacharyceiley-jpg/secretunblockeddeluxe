@@ -58,8 +58,17 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     .unread-badge{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#ff4d67;color:white;font-size:11px;font-weight:800;vertical-align:middle;margin-left:5px}
     .inbox-dot{width:8px;height:8px;border-radius:50%;background:#ff4d67;display:inline-block;margin-right:7px}
 
-@media(max-width:850px){.nav{display:none}.hero{grid-template-columns:1fr}.feature-grid{grid-template-columns:repeat(2,1fr)}}
-@media(max-width:520px){.topbar{padding:0 14px}.brand span:last-child{display:none}main{padding:35px 16px}.feature-grid{grid-template-columns:1fr}.hero h1{font-size:45px}}
+@media(max-width:850px){
+  .topbar{height:auto;min-height:70px;flex-wrap:wrap;gap:10px;padding-top:10px;padding-bottom:0}
+  .brand{min-height:46px}
+  .account-area{margin-left:auto;min-height:46px;align-items:center}
+  .nav{display:flex;order:3;flex:0 0 calc(100% + 0px);width:100%;min-width:0;gap:4px;overflow-x:auto;overflow-y:hidden;white-space:nowrap;padding:0 0 9px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+  .nav::-webkit-scrollbar{display:none}
+  .nav a{flex:0 0 auto;padding:9px 12px;font-size:14px}
+  .hero{grid-template-columns:1fr}
+  .feature-grid{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:520px){.topbar{padding-left:14px;padding-right:14px}.brand span:last-child{display:inline;font-size:14px}.brand{gap:7px}.brand-mark{width:32px;height:32px}.account-button{padding:8px 10px;font-size:13px}.icon-button{padding:8px 10px}main{padding:28px 16px 80px}.feature-grid{grid-template-columns:1fr}.hero h1{font-size:45px}}
 
     .game-toolbar{display:flex;gap:10px;align-items:center;margin-bottom:24px}
     .game-search{flex:1;min-width:0;padding:12px 14px;background:#0b0d11;border:1px solid var(--line);border-radius:10px;color:var(--text);outline:none}
@@ -105,6 +114,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       <a href="#" data-page="games">Games</a>
       <a href="#" data-page="users">Users</a>
       <a href="#" data-page="inbox" id="inboxNavLink">📩 Inbox <span id="unreadBadge" class="unread-badge hidden">0</span></a>
+      <a href="#" data-page="admin" id="adminNavLink" class="hidden">🛡️ Admin Panel</a>
       <a href="https://zacharyceiley-jpg.github.io/secret-Unblocked-Listen/" target="_blank" rel="noopener">Listen</a>
     </nav>
 
@@ -481,7 +491,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
     list.innerHTML = '<div class="loading">Loading messages…</div>';
     const {data,error} = await sb.from("messages")
-      .select("id,sender_id,content,created_at,read_at,profiles(username)")
+      .select("id,sender_id,content,created_at,read_at,sender:profiles!messages_sender_id_fkey(username)")
       .eq("recipient_id",currentUser.id)
       .is("game_id",null)
       .order("created_at",{ascending:false})
@@ -505,7 +515,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     list.innerHTML = messages.map(m => `
       <article class="inbox-message ${m.read_at ? "" : "unread"}" onclick="openInboxMessage('${m.id}')">
         <div class="inbox-message-head">
-          <strong>${m.read_at ? "" : '<span class="inbox-dot"></span>'}${escapeHtml(m.profiles?.username || "Administrator")}</strong>
+          <strong>${m.read_at ? "" : '<span class="inbox-dot"></span>'}${escapeHtml(m.sender?.username || "Administrator")}</strong>
           <span class="inbox-message-time">${escapeHtml(new Date(m.created_at).toLocaleString())}</span>
         </div>
         <div class="inbox-message-preview">${escapeHtml(m.content)}</div>
@@ -518,7 +528,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   async function openInboxMessage(id){
     if (!sb || !currentUser) return;
     const {data,error} = await sb.from("messages")
-      .select("id,content,created_at,read_at,profiles(username)")
+      .select("id,content,created_at,read_at,sender:profiles!messages_sender_id_fkey(username)")
       .eq("id",id)
       .eq("recipient_id",currentUser.id)
       .is("game_id",null)
@@ -535,7 +545,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       if (readError) return alert(readError.message);
     }
 
-    alert(`${data.profiles?.username || "Administrator"} wrote:\\n\\n${data.content}`);
+    alert(`${data.sender?.username || "Administrator"} wrote:\\n\\n${data.content}`);
     await loadInbox();
   }
 
@@ -607,6 +617,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
   function updateAccountUI(){
     const btn = $("accountButton");
+    const adminLink = $("adminNavLink");
+    if (adminLink) {
+      adminLink.classList.toggle("hidden", !currentUser || currentRole !== "admin");
+    }
     if (!currentUser) {
       btn.textContent = "Sign In";
       return;
@@ -1044,10 +1058,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
   async function loadGameChat(silent=false){
     if (!sb || !currentUser || !currentGame || !currentGame.chat_enabled) return;
-    const {data,error}=await sb.from("messages").select("id,sender_id,content,created_at,profiles(username)").eq("game_id",currentGame.id).gte("created_at",australiaMidnightISO()).order("created_at",{ascending:true}).limit(200);
+    const {data,error}=await sb.from("messages").select("id,sender_id,content,created_at,sender:profiles!messages_sender_id_fkey(username)").eq("game_id",currentGame.id).gte("created_at",australiaMidnightISO()).order("created_at",{ascending:true}).limit(200);
     if (error) { if(!silent) console.error(error); return; }
     const box=$("gameChatBox"); if(!box) return;
-    box.innerHTML=(data||[]).map(m=>`<div class="game-chat-message"><b>${escapeHtml(m.sender_id===currentUser.id?"You":m.profiles?.username||"User")}</b><div style="color:var(--muted);margin-top:3px">${escapeHtml(m.content)}</div></div>`).join("")||'<div class="loading">No messages yet. Start the chat!</div>';
+    box.innerHTML=(data||[]).map(m=>`<div class="game-chat-message"><b>${escapeHtml(m.sender_id===currentUser.id?"You":m.sender?.username||"User")}</b><div style="color:var(--muted);margin-top:3px">${escapeHtml(m.content)}</div></div>`).join("")||'<div class="loading">No messages yet. Start the chat!</div>';
     box.scrollTop=box.scrollHeight;
   }
 
@@ -1211,7 +1225,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       sb.from("messages").select("id", {count:"exact", head:true}),
       sb.from("profiles").select("id,username,avatar_url,bio").order("created_at",{ascending:false}).limit(8),
       sb.from("games").select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)").order("created_at",{ascending:false}).limit(8),
-      sb.from("messages").select("id,sender_id,recipient_id,content,created_at,game_id,profiles(username)").order("created_at",{ascending:false}).limit(15)
+      sb.from("messages").select("id,sender_id,recipient_id,content,created_at,game_id,sender:profiles!messages_sender_id_fkey(username)").order("created_at",{ascending:false}).limit(15)
     ]);
 
     $("adminUserCount").textContent = usersResult.count ?? "0";
@@ -1259,7 +1273,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     } else {
       $("adminMessages").innerHTML = (recentMessagesResult.data || []).map(m => `
         <div class="admin-row">
-          <div><strong>${escapeHtml(m.profiles?.username || (m.sender_id === currentUser.id ? "You" : "User"))}</strong>
+          <div><strong>${escapeHtml(m.sender?.username || (m.sender_id === currentUser.id ? "You" : "User"))}</strong>
           <span class="admin-status">${m.recipient_id ? "Direct message" : "Game chat"}</span>
           <span class="admin-status">${escapeHtml(new Date(m.created_at).toLocaleString())}</span>
           ${m.game_id ? `<button class="secondary" style="margin-left:8px" onclick="openGameChatFromAdmin('${m.game_id}')">Open game chat</button>` : ""}</div>
@@ -1361,9 +1375,9 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     if(!section || !box) return;
     if(!currentUser || currentRole==="admin"){ section.classList.add("hidden"); return; }
     section.classList.remove("hidden");
-    const {data,error}=await sb.from("messages").select("id,content,created_at,profiles(username)").eq("recipient_id",currentUser.id).is("game_id",null).order("created_at",{ascending:false}).limit(20);
+    const {data,error}=await sb.from("messages").select("id,content,created_at,sender:profiles!messages_sender_id_fkey(username)").eq("recipient_id",currentUser.id).is("game_id",null).order("created_at",{ascending:false}).limit(20);
     if(error){box.innerHTML='<div class="loading">Unable to load admin messages.</div>';return;}
-    box.innerHTML=(data||[]).map(m=>`<div class="admin-row"><strong>${escapeHtml(m.profiles?.username||"Admin")}</strong><span class="admin-status">${escapeHtml(new Date(m.created_at).toLocaleString())}</span><div style="color:var(--muted);margin-top:5px;line-height:1.5">${escapeHtml(m.content)}</div></div>`).join("") || '<div class="loading">No admin messages.</div>';
+    box.innerHTML=(data||[]).map(m=>`<div class="admin-row"><strong>${escapeHtml(m.sender?.username||"Admin")}</strong><span class="admin-status">${escapeHtml(new Date(m.created_at).toLocaleString())}</span><div style="color:var(--muted);margin-top:5px;line-height:1.5">${escapeHtml(m.content)}</div></div>`).join("") || '<div class="loading">No admin messages.</div>';
   }
 
   async function openGameChatFromAdmin(id){
