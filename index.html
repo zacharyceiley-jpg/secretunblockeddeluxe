@@ -1113,8 +1113,24 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     });
 
     if (error) return alert(error.message);
+    let emailNote = "";
+    const {data:sessionData} = await sb.auth.getSession();
+    const accessToken = sessionData?.session?.access_token;
+    if (accessToken) {
+      try {
+        const response = await fetch("https://hhszfqpojhmwbmuhdmis.supabase.co/functions/v1/send-admin-email", {
+          method: "POST",
+          headers: {"Content-Type":"application/json", "Authorization":`Bearer ${accessToken}`, "apikey":SUPABASE_ANON_KEY},
+          body: JSON.stringify({recipient_id:adminSelectedMessageUser.id, message:content})
+        });
+        const result = await response.json().catch(()=>({}));
+        emailNote = response.ok && result.ok ? " Email sent too." : ` Email not sent: ${result.error || "email service isn't configured yet"}.`;
+      } catch (e) { emailNote = " Email service couldn't be reached."; }
+    } else {
+      emailNote = " Email wasn't attempted because your session needs refreshing.";
+    }
     input.value = "";
-    $("adminMessageStatus").textContent = `Message sent to ${adminSelectedMessageUser.username || "user"}.`;
+    $("adminMessageStatus").textContent = `In-app message sent to ${adminSelectedMessageUser.username || "user"}.` + emailNote;
     await loadAdminPanel();
   }
 
@@ -1331,12 +1347,47 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   }
 
   async function sendAdminMessage(){
-    if(currentRole!=="admin" || !adminSelectedUserId) return setAdminComposeStatus("Select a user first.",true);
+    if(!sb || !currentUser || currentRole!=="admin" || !adminSelectedUserId) return setAdminComposeStatus("Sign in as an admin and select a user first.",true);
     const input=$("adminMessageInput"), content=input.value.trim();
     if(!content) return setAdminComposeStatus("Write a message first.",true);
-    const {error}=await sb.from("messages").insert({sender_id:currentUser.id,recipient_id:adminSelectedUserId,game_id:null,content});
-    if(error) return setAdminComposeStatus(error.message,true);
-    input.value=""; setAdminComposeStatus("Message sent."); await loadAdminPanel();
+    const button=$("adminSendMessage");
+    if(button){button.disabled=true;button.textContent="Sending…";}
+    try {
+      // Save to the in-app Inbox first. Email is an additional delivery channel.
+      const {error}=await sb.from("messages").insert({sender_id:currentUser.id,recipient_id:adminSelectedUserId,game_id:null,content});
+      if(error) throw new Error(error.message);
+
+      let emailStatus="";
+      const {data:sessionData,error:sessionError}=await sb.auth.getSession();
+      const accessToken=sessionData?.session?.access_token;
+      if(sessionError || !accessToken){
+        emailStatus=" In-app Inbox message saved, but email could not be attempted because your session needs refreshing.";
+      } else {
+        try {
+          const response=await fetch("https://hhszfqpojhmwbmuhdmis.supabase.co/functions/v1/send-admin-email",{
+            method:"POST",
+            headers:{"Content-Type":"application/json","Authorization":`Bearer ${accessToken}`,"apikey":SUPABASE_ANON_KEY},
+            body:JSON.stringify({recipient_id:adminSelectedUserId,message:content})
+          });
+          const result=await response.json().catch(()=>({}));
+          if(response.ok && result.ok){
+            emailStatus=" Email sent too.";
+          } else {
+            emailStatus=` In-app Inbox message saved, but email wasn't sent: ${result.error || "email service isn't configured yet"}.`;
+          }
+        } catch(emailError) {
+          console.error("Admin email request failed",emailError);
+          emailStatus=" In-app Inbox message saved, but the email service couldn't be reached.";
+        }
+      }
+      input.value="";
+      setAdminComposeStatus("In-app message sent."+emailStatus, false);
+      await loadAdminPanel();
+    } catch(error) {
+      setAdminComposeStatus(error.message || "Couldn't send the message.",true);
+    } finally {
+      if(button){button.disabled=false;button.textContent="Send Message";}
+    }
   }
 
   function setAdminComposeStatus(message,error=false){ const el=$("adminMessageComposeStatus"); if(!el)return; el.textContent=message; el.style.color=error?"#ff7b7b":"var(--muted)"; }
