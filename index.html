@@ -372,6 +372,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   let currentProfile = null;
   let currentRole = "user";
   let adminUsersCache = [];
+  let adminAllUsers = [];
   let adminSelectedUserId = null;
   let adminMessagePresetApplied = false;
 
@@ -1101,7 +1102,6 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
     const banMap = Object.fromEntries((bans || []).map(b => [b.user_id,b]));
     adminAllUsers = (data || []).map(u => ({...u,_ban:banMap[u.id] || null}));
-    renderAdminMessageUsers();
     renderAdminModerationUsers();
   }
 
