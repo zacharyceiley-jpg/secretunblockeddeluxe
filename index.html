@@ -958,7 +958,6 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       base.href=url;
       parsed.head.prepend(base);
       // Re-render valid HTML through srcdoc so plain-text-hosted HTML still executes.
-      }
       frame.srcdoc="<!doctype html>\n"+parsed.documentElement.outerHTML;
     }catch(error){
       // Hosts without CORS support cannot be inspected here; the direct iframe URL remains active.
