@@ -177,33 +177,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       <div class="page-title">
         <p class="eyebrow">DELUXE</p>
         <h1>Games</h1>
-        <p>Browse published games or submit your own linked HTML game.</p>
+        <p>Browse and play published games. Create and manage your games in HTML Studio.</p>
       </div>
       <div class="game-toolbar">
         <input id="gameSearch" class="game-search" type="search" placeholder="Search games…">
-        <button class="primary" id="openGameUploader">＋ Submit a Game</button>
-      </div>
-      <div id="gameUploader" class="game-uploader hidden">
-        <div class="section-heading" style="margin-top:0">
-          <div><p class="eyebrow" id="gameEditorEyebrow">CREATOR TOOLS</p><h2 id="gameEditorTitle">Submit a game</h2></div>
-        </div>
-        <p class="small-note">Games are submitted as links. Choose whether players should have a separate chat for this game.</p>
-        <form id="gameForm" class="game-form">
-          <label>Game title<input id="gameTitle" maxlength="100" required placeholder="e.g. Snow Rider 3D"></label>
-          <label>Description<textarea id="gameDescription" maxlength="1000" rows="4" placeholder="Tell players what the game is about."></textarea></label>
-          <label>Thumbnail URL<input id="gameThumbnail" type="url" placeholder="https://example.com/thumbnail.png"></label>
-          <label>Game URL<input id="gameUrl" type="url" required placeholder="https://example.com/game.html"></label>
-          <label class="check-row"><input id="gameChatEnabled" type="checkbox" checked> <span>Enable chat for this game</span></label>
-          <div class="hero-actions">
-            <button class="primary" type="submit" id="submitGameButton">Submit Game</button>
-            <button class="secondary" type="button" id="cancelGameUploader">Cancel</button>
-          </div>
-          <div id="gameFormMessage" class="auth-message"></div>
-        </form>
-      </div>
-      <div id="myGamesSection" class="hidden" style="margin-top:30px">
-        <div class="section-heading"><div><p class="eyebrow">YOUR SUBMISSIONS</p><h2>My Games</h2></div></div>
-        <div id="myGamesGrid" class="user-grid"></div>
       </div>
       <div id="publicGamesSection">
         <div class="section-heading"><div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div></div>
@@ -781,7 +758,6 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   }
 
   let allPublishedGames = [];
-  let allMyGames = [];
 
   function validGameUrl(value){
     try {
@@ -823,38 +799,16 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
     $("gameGrid").innerHTML = publicGames.map(g => renderGameCard(g)).join("") ||
       '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
-
-    if (currentUser) {
-      $("myGamesSection").classList.remove("hidden");
-      const mine = allMyGames.filter(g =>
-        !q ||
-        String(g.title || "").toLowerCase().includes(q) ||
-        String(g.description || "").toLowerCase().includes(q)
-      );
-      $("myGamesGrid").innerHTML = mine.map(g => renderGameCard(g, true)).join("") ||
-        '<div class="loading">You have no submissions yet.</div>';
-    } else {
-      $("myGamesSection").classList.add("hidden");
-    }
   }
 
   async function loadGames(){
     if (!sb) return;
     $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
 
-    const publicQuery = sb.from("games")
+    const publicResult = await sb.from("games")
       .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)")
       .eq("status","published")
       .order("created_at",{ascending:false});
-
-    const mineQuery = currentUser
-      ? sb.from("games")
-          .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)")
-          .eq("creator_id",currentUser.id)
-          .order("created_at",{ascending:false})
-      : Promise.resolve({data:[],error:null});
-
-    const [publicResult, mineResult] = await Promise.all([publicQuery, mineQuery]);
 
     if (publicResult.error) {
       console.error(publicResult.error);
@@ -862,10 +816,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       return;
     }
 
-    if (mineResult.error) console.error(mineResult.error);
-
     allPublishedGames = publicResult.data || [];
-    allMyGames = mineResult.data || [];
     renderGames($("gameSearch")?.value || "");
   }
 
