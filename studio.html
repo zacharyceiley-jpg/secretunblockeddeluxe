@@ -35,9 +35,63 @@ function addFile(name,value){name=name.replace(/^\/+/, '').replace(/\\/g,'/');if
 async function readFiles(fileList){for(const f of fileList){if(f.name.toLowerCase().endsWith('.zip')){if(!window.JSZip){alert('ZIP library could not load. Try again or upload individual files.');continue}try{const zip=await JSZip.loadAsync(f);for(const [name,item] of Object.entries(zip.files)){if(item.dir||name.startsWith('__MACOSX/'))continue;const ext=name.split('.').pop().toLowerCase();if(['png','jpg','jpeg','gif','webp','ico','woff','woff2','mp3','ogg','mp4','webm','pdf'].includes(ext))addFile(name,await item.async('base64'));else addFile(name,await item.async('string'));}}catch(e){alert('Could not extract ZIP: '+e.message)}}else if(textExt.test(f.name)){addFile(f.webkitRelativePath||f.name,await f.text())}else{const b64=await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(String(r.result).split(',')[1]);r.onerror=reject;r.readAsDataURL(f)});addFile(f.webkitRelativePath||f.name,b64)}}if(!active&&files.size)active=[...files.keys()][0];if(active)selectFile(active);else renderFiles();dirty=true;setStatus();}
 function toBlobValue(name,value){if(typeof value!=='string')return value;if(textExt.test(name))return new Blob([value]);const raw=atob(value);const arr=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)arr[i]=raw.charCodeAt(i);return new Blob([arr]);}
 function htmlEntry(){return [...files.keys()].find(n=>n.toLowerCase()==='index.html')||[...files.keys()].find(n=>/\.html?$/i.test(n));}
-function runPreview(){if(active&&files.has(active)&&textExt.test(active))files.set(active,$('editor').value);const entry=htmlEntry();if(!entry){$('previewStatus').textContent='No HTML file found. Upload or create an .html file.';return}let html=files.get(entry);const base=entry.includes('/')?entry.slice(0,entry.lastIndexOf('/')+1):'';html=html.replace(/(src|href)=(["'])(?!https?:|data:|#|\/\/)([^"']+)\2/gi,(match,attr,q,path)=>{const key=base+path.replace(/^\.\//,'');const val=files.get(key);if(typeof val==='string'&&textExt.test(key)){return attr+'='+q+'data:text/plain;charset=utf-8,'+encodeURIComponent(val)+q}return match});$('preview').srcdoc=html;$('previewStatus').textContent='Previewing '+entry+' in an isolated frame.';}
+function resolveProjectPath(fromFile,relativePath){
+ const clean=String(relativePath||'').split(/[?#]/)[0].replace(/\\\\/g,'/');
+ if(!clean||/^(?:[a-z]+:|\/\/|#|data:|blob:)/i.test(clean)||clean.startsWith('/'))return null;
+ const stack=(fromFile.includes('/')?fromFile.slice(0,fromFile.lastIndexOf('/')).split('/').filter(Boolean):[]);
+ for(const part of clean.split('/')){if(!part||part==='.')continue;if(part==='..'){if(!stack.length)return null;stack.pop()}else stack.push(part)}
+ return stack.join('/');
+}
+function assetDataUri(name,value){
+ if(typeof value!=='string')return null;
+ if(/\.svg$/i.test(name))return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(value);
+ if(textExt.test(name))return null;
+ const ext=(name.match(/\.([^.]+)$/)||[])[1]?.toLowerCase();
+ const mime=({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',ico:'image/x-icon',mp3:'audio/mpeg',ogg:'audio/ogg',wav:'audio/wav',mp4:'video/mp4',webm:'video/webm',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',otf:'font/otf'})[ext];
+ return mime?'data:'+mime+';base64,'+value:null;
+}
+function runPreview(){
+ if(active&&files.has(active)&&textExt.test(active))files.set(active,$('editor').value);
+ const entry=htmlEntry();
+ if(!entry){$('previewStatus').textContent='No HTML file found. Upload or create an .html file.';return}
+ try{
+  const parser=new DOMParser();
+  const doc=parser.parseFromString(String(files.get(entry)||''),'text/html');
+  const replaceAssets=(css,fromFile)=>String(css).replace(/url\\(\\s*(['"]?)([^)'"]+)\\1\\s*\\)/gi,(match,q,path)=>{
+   const key=resolveProjectPath(fromFile,path);if(!key||!files.has(key))return match;
+   const uri=assetDataUri(key,files.get(key));return uri?'url("'+uri+'")':match;
+  });
+  for(const link of [...doc.querySelectorAll('link[rel~="stylesheet"][href]')]){
+   const path=link.getAttribute('href'),key=resolveProjectPath(entry,path);
+   if(key&&files.has(key)&&typeof files.get(key)==='string'){
+    const style=doc.createElement('style');style.textContent=replaceAssets(files.get(key),key);link.replaceWith(style);
+   }
+  }
+  for(const script of [...doc.querySelectorAll('script[src]')]){
+   const key=resolveProjectPath(entry,script.getAttribute('src'));
+   if(key&&files.has(key)&&typeof files.get(key)==='string'&&textExt.test(key)){
+    script.removeAttribute('src');script.textContent=String(files.get(key)).replace(/<\\/script/gi,'<\\\\/script');
+   }
+  }
+  for(const el of [...doc.querySelectorAll('[src], [poster], [href]')]){
+   for(const attr of ['src','poster','href']){
+    if(!el.hasAttribute(attr))continue;
+    const path=el.getAttribute(attr),key=resolveProjectPath(entry,path);
+    if(!key||!files.has(key))continue;
+    const uri=assetDataUri(key,files.get(key));if(uri)el.setAttribute(attr,uri);
+   }
+  }
+  for(const style of [...doc.querySelectorAll('style')])style.textContent=replaceAssets(style.textContent,entry);
+  for(const el of [...doc.querySelectorAll('[style]')])el.setAttribute('style',replaceAssets(el.getAttribute('style'),entry));
+  $('preview').srcdoc='<!doctype html>\\n'+doc.documentElement.outerHTML;
+  $('previewStatus').textContent='Previewing '+entry+' with linked local CSS, JavaScript and assets in an isolated frame.';
+ }catch(error){$('previewStatus').textContent='Preview error: '+(error?.message||'Could not build preview.');}
+}
 $('uploadBtn').onclick=()=>$('fileInput').click();$('fileInput').onchange=e=>readFiles([...e.target.files]);
-$('editor').addEventListener('input',()=>{if(active&&files.has(active)){files.set(active,$('editor').value);markDirty()}});
+let previewRefreshTimer=null;
+$('editor').addEventListener('input',()=>{if(active&&files.has(active)){files.set(active,$('editor').value);markDirty();clearTimeout(previewRefreshTimer);previewRefreshTimer=setTimeout(runPreview,650)}});
+$('editor').addEventListener('keydown',event=>{if(event.key==='Tab'){event.preventDefault();const el=$('editor'),start=el.selectionStart,end=el.selectionEnd;el.setRangeText('  ',start,end,'end');el.dispatchEvent(new Event('input',{bubbles:true}))}});
+document.addEventListener('keydown',event=>{if((event.ctrlKey||event.metaKey)&&event.key.toLowerCase()==='s'){event.preventDefault();saveLocalProject()}});
 $('newBtn').onclick=()=>{const name=prompt('Name your HTML file','index.html');if(!name)return;addFile(name,name.toLowerCase().endsWith('.html')?'<!doctype html>\n<html><head><meta charset="utf-8"><title>My Game</title></head><body>\n<h1>My Game</h1>\n<script>console.log("Ready to build");<\\/script>\n</body></html>':'');selectFile(name);dirty=true;};
 $('runBtn').onclick=runPreview;
 $('fullBtn').onclick=()=>{const f=$('preview');if(f.requestFullscreen)f.requestFullscreen()};
