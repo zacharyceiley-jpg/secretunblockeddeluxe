@@ -949,7 +949,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       if(!response.ok)return;
       const type=(response.headers.get("content-type")||"").toLowerCase();
       const text=await response.text();
-      const looksLikeHtml=/^\\s*(?:<!doctype\\s+html|<html\\b|<head\\b|<body\\b|<\\?xml)/i.test(text);
+      const looksLikeHtml=/^\s*(?:<!doctype\s+html|<html\b|<head\b|<body\b|<\?xml)/i.test(text);
       if(!looksLikeHtml)return;
       // Rebase relative CSS, scripts, images and links to the original game URL.
       const parsed=new DOMParser().parseFromString(text,"text/html");
@@ -958,10 +958,8 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       base.href=url;
       parsed.head.prepend(base);
       // Re-render valid HTML through srcdoc so plain-text-hosted HTML still executes.
-      if(type.includes("text/html") && !/^(?:text\\/plain|application\\/octet-stream)/.test(type)) {
-        // Keep a normalized document for consistent relative-asset resolution.
       }
-      frame.srcdoc="<!doctype html>\\n"+parsed.documentElement.outerHTML;
+      frame.srcdoc="<!doctype html>\n"+parsed.documentElement.outerHTML;
     }catch(error){
       // Hosts without CORS support cannot be inspected here; the direct iframe URL remains active.
       console.info("Using direct game URL fallback:",error?.message||error);
