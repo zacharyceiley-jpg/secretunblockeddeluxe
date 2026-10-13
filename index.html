@@ -938,8 +938,8 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     showPage("games");
   }
 
-  // Load HTML games as playable documents even when a host labels the response text/plain.
-  // If cross-origin fetching is blocked, fall back to the original URL in the isolated iframe.
+  // Load HTML games even when a host incorrectly serves the file as text/plain.
+  // Keep ordinary web games on their original URL; only re-wrap responses that look like HTML source.
   async function loadPlayableGameFrame(url){
     const frame=$("activeGameFrame");
     if(!frame||!url)return;
@@ -948,19 +948,32 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       const response=await fetch(url,{mode:"cors",credentials:"omit",cache:"no-store"});
       if(!response.ok)return;
       const type=(response.headers.get("content-type")||"").toLowerCase();
-      const text=await response.text();
-      const looksLikeHtml=/^\s*(?:<!doctype\s+html|<html\b|<head\b|<body\b|<\?xml)/i.test(text);
-      if(!looksLikeHtml)return;
-      // Rebase relative CSS, scripts, images and links to the original game URL.
-      const parsed=new DOMParser().parseFromString(text,"text/html");
-      if(!parsed.head) return;
-      const base=parsed.createElement("base");
-      base.href=url;
-      parsed.head.prepend(base);
-      // Re-render valid HTML through srcdoc so plain-text-hosted HTML still executes.
-      frame.srcdoc="<!doctype html>\n"+parsed.documentElement.outerHTML;
+      const rawText=await response.text();
+      // Ignore a UTF-8 BOM, whitespace, and leading comments/XML declarations when detecting HTML.
+      const text=rawText.replace(/^\\uFEFF/,"").trimStart();
+      const withoutPreamble=text
+        .replace(/^(?:<\\?xml[^>]*>\\s*)+/i,"")
+        .replace(/^(?:<!--[\\s\\S]*?-->\\s*)+/,"")
+        .trimStart();
+      const startsLikeHtml=/^(?:<!doctype\\s+html\\b|<html\\b|<head\\b|<body\\b|<meta\\b|<title\\b|<script\\b|<style\\b|<div\\b|<main\\b|<canvas\\b|<svg\\b|<iframe\\b|<link\\b|<section\\b|<article\\b|<\\?xml)/i.test(withoutPreamble);
+      const isPlainTextHtmlSource=!type.includes("text/html") && startsLikeHtml;
+      if(!isPlainTextHtmlSource)return;
+      // Rebase relative assets so images, scripts, stylesheets and links still resolve at the source URL.
+      const parsed=new DOMParser().parseFromString(rawText,"text/html");
+      if(!parsed.head || !parsed.documentElement)return;
+      const existingBase=parsed.head.querySelector("base");
+      if(existingBase){
+        existingBase.href=url;
+      }else{
+        const base=parsed.createElement("base");
+        base.href=url;
+        parsed.head.prepend(base);
+      }
+      // srcdoc makes browsers parse the HTML as a document instead of displaying the source text.
+      frame.removeAttribute("src");
+      frame.srcdoc="<!doctype html>\\n"+parsed.documentElement.outerHTML;
     }catch(error){
-      // Hosts without CORS support cannot be inspected here; the direct iframe URL remains active.
+      // If the host blocks cross-origin fetching, preserve the existing direct-URL fallback.
       console.info("Using direct game URL fallback:",error?.message||error);
     }
   }
