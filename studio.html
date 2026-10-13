@@ -20,8 +20,9 @@
 <section class="panel"><div class="panelhead"><span>Code editor</span><span id="dirty" class="muted">No file selected</span></div><div class="editorbar"><strong id="activeName">Select a file</strong><button id="downloadBtn" disabled>Download file</button><button id="deleteBtn" disabled>Remove</button></div><textarea id="editor" class="editor" spellcheck="false" placeholder="Select a text file to edit its source…"></textarea><div id="imageTools" style="display:none;padding:12px;border-top:1px solid var(--line);background:#101218"><strong>Thumbnail / image editor</strong><div class="notice" id="imageInfo">Select an image.</div><img id="imagePreview" alt="Selected thumbnail" style="display:block;max-width:100%;max-height:220px;object-fit:contain;margin:8px auto;background:#08090c;border-radius:8px"><div class="tools"><button id="replaceImageBtn">Replace image</button><input id="replaceImageInput" type="file" accept="image/*" hidden><label>Width <input id="imageWidth" type="number" min="1" max="4096" style="width:80px"></label><label>Height <input id="imageHeight" type="number" min="1" max="4096" style="width:80px"></label><select id="imageFit"><option value="contain">Fit</option><option value="cover">Crop to fill</option><option value="stretch">Stretch</option></select><button id="applyImageBtn" class="primary">Apply image edit</button></div><div class="notice">Image edits create a PNG file in the project. Export the project ZIP to keep all changes.</div></div><div class="status">Edits stay in this browser until you save the project or export a ZIP.</div></section>
 <section class="panel previewpanel"><div class="panelhead"><span>Live preview</span><div class="tools"><button id="runBtn" class="primary">Run</button><button id="fullBtn">Fullscreen</button></div></div><iframe id="preview" class="preview" sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock" title="Game preview"></iframe><div class="status" id="previewStatus">Preview is isolated from the main site.</div></section>
 </div>
+<section class="pilot" id="publishPanel"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>🚀 Publish to Games</h2><span class="pill">Secret Unblocked Deluxe</span></div><p class="notice">Upload this Studio project to the shared game library. HTML, CSS, JavaScript and assets are stored together. New submissions wait for admin approval.</p><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px;margin:12px 0"><label>Game title<input id="publishTitle" class="field" maxlength="100" placeholder="My Awesome Game"></label><label>Thumbnail (optional)<input id="publishThumbnail" class="field" type="file" accept="image/*"></label></div><label>Description<textarea id="publishDescription" placeholder="Describe your game…" style="width:100%;min-height:65px;padding:11px;background:#0a0c10;border:1px solid var(--line);border-radius:9px;color:var(--text)"></textarea></label><div class="tools" style="margin-top:10px"><button id="publishGameBtn" class="primary">Publish Studio Game</button></div><div id="publishStatus" class="notice" style="margin-top:8px">Sign in on the main site before publishing.</div></section>
 <section class="pilot"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>✦ Develop Pilot</h2><span class="pill">AI coding assistant</span><span class="pill">Uses Site Pilot's AI secret</span></div><p class="notice">Describe a feature or bug. Develop Pilot reads the text/code files loaded in this workspace, proposes complete file edits, and lets you review them before applying. Upload your game or ZIP first. Images and other binary assets are listed by filename but are not sent as source code.</p><textarea id="pilotPrompt" placeholder="Example: Add a pause menu with Resume and Restart buttons. Inspect the existing game code and update the right files."></textarea><div class="tools"><button id="runDevelopPilot" class="primary">Ask Develop Pilot</button><button id="applyDevelopChanges" hidden>Apply proposed changes</button><button id="copyPrompt">Copy coding request</button><button id="downloadProject">Download project ZIP</button></div><div id="developReply" style="display:none;white-space:pre-wrap;overflow-wrap:anywhere;background:#0a0c10;border:1px solid var(--line);border-radius:9px;padding:12px;margin-top:10px;line-height:1.55"></div><div id="developChanges" class="notice" style="margin-top:8px"></div><div class="notice" id="pilotStatus" style="margin-top:8px">Ready. Sign in on the main site, upload your game files, then describe what you want built.</div></section>
-<p class="notice" style="margin-top:14px">Only import code you trust; uploaded games run as scripts in an isolated preview. Projects are saved only in this browser until exported, and are not automatically published to the shared game library.</p>
+<p class="notice" style="margin-top:14px">Only import code you trust; uploaded games run as scripts in an isolated preview. Local saves stay in this browser; use Publish to Games to submit a hosted copy to the shared library.</p>
 </main>
 <script>
 const files=new Map();let active='';let dirty=false;let currentProjectId='';const PROJECTS_KEY='sud_html_studio_projects_v1';const $=id=>document.getElementById(id);
@@ -87,6 +88,59 @@ function runPreview(){
   $('previewStatus').textContent='Previewing '+entry+' with linked local CSS, JavaScript and assets in an isolated frame.';
  }catch(error){$('previewStatus').textContent='Preview error: '+(error?.message||'Could not build preview.');}
 }
+
+const PUBLISH_SUPABASE_URL='https://hhszfqpojhmwbmuhdmis.supabase.co';
+let publishSupabaseClient=null;
+function publishMessage(message,isError=false){const el=$('publishStatus');el.textContent=message;el.style.color=isError?'#ff9d9d':'var(--muted)';}
+function fileMime(name){const ext=(name.match(/\.([^.]+)$/)||[])[1]?.toLowerCase();return ({html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',json:'application/json',txt:'text/plain',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',mp3:'audio/mpeg',ogg:'audio/ogg',wav:'audio/wav',mp4:'video/mp4',webm:'video/webm',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',otf:'font/otf'})[ext]||'application/octet-stream';}
+function projectFileBlob(name,value){if(textExt.test(name))return new Blob([String(value)],{type:fileMime(name)});const raw=atob(String(value));const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new Blob([bytes],{type:fileMime(name)});}
+async function publishStudioGame(){
+ syncEditor();
+ if(!window.supabase?.createClient)return publishMessage('Supabase did not load. Refresh Studio and try again.',true);
+ if(!files.size)return publishMessage('Add your game files first.',true);
+ const title=$('publishTitle').value.trim();
+ if(!title)return publishMessage('Enter a game title.',true);
+ const entry=htmlEntry();
+ if(!entry)return publishMessage('Your project needs an HTML file. Name the main file index.html if possible.',true);
+ if(files.size>100)return publishMessage('This project has more than 100 files. Split it into a smaller project first.',true);
+ let total=0;for(const [name,value] of files){total+=typeof value==='string'?value.length:0;}
+ if(total>12*1024*1024)return publishMessage('Project text is larger than 12 MB. Reduce the project size and try again.',true);
+ const btn=$('publishGameBtn');btn.disabled=true;
+ try{
+  if(!publishSupabaseClient)publishSupabaseClient=window.supabase.createClient(PUBLISH_SUPABASE_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk');
+  const {data:sessionData,error:sessionError}=await publishSupabaseClient.auth.getSession();
+  if(sessionError)throw sessionError;
+  const user=sessionData?.session?.user;
+  if(!user)throw new Error('Sign in on the main site first, then return to Studio.');
+  publishMessage('Uploading project files…');
+  const gameId=crypto.randomUUID();
+  const root=user.id+'/'+gameId;
+  const ordered=[...files.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  for(let i=0;i<ordered.length;i++){
+   const [path,value]=ordered[i];
+   if(!path||path.split('/').includes('..')||path.startsWith('/'))throw new Error('Invalid project file path: '+path);
+   const {error}=await publishSupabaseClient.storage.from('game-assets').upload(root+'/'+path,projectFileBlob(path,value),{upsert:false,contentType:fileMime(path),cacheControl:'3600'});
+   if(error)throw new Error('Upload failed for '+path+': '+error.message);
+   publishMessage('Uploading '+(i+1)+' of '+ordered.length+' files…');
+  }
+  const {data:publicData}=publishSupabaseClient.storage.from('game-assets').getPublicUrl(root+'/'+entry);
+  let thumbnailUrl=null;
+  const thumb=$('publishThumbnail').files?.[0];
+  if(thumb){
+   const ext=(thumb.name.match(/\.[^.]+$/)||['.png'])[0].toLowerCase();
+   const path=root+'/thumbnail'+ext;
+   const {error}=await publishSupabaseClient.storage.from('game-assets').upload(path,thumb,{upsert:false,contentType:thumb.type||'image/png'});
+   if(error)throw new Error('Game files uploaded, but thumbnail upload failed: '+error.message);
+   thumbnailUrl=publishSupabaseClient.storage.from('game-assets').getPublicUrl(path).data.publicUrl;
+  }
+  const {error:insertError}=await publishSupabaseClient.from('games').insert({id:gameId,creator_id:user.id,title,description:$('publishDescription').value.trim(),thumbnail_url:thumbnailUrl,game_url:publicData.publicUrl,storage_path:root,status:'pending',chat_enabled:true});
+  if(insertError)throw new Error('Files uploaded, but game submission failed: '+insertError.message);
+  publishMessage('Submitted successfully! Your game is uploaded and waiting for admin approval.');
+ }catch(error){publishMessage(error?.message||'Publishing failed. Please try again.',true);}
+ finally{btn.disabled=false;}
+}
+$('publishGameBtn').onclick=publishStudioGame;
+
 $('uploadBtn').onclick=()=>$('fileInput').click();$('fileInput').onchange=e=>readFiles([...e.target.files]);
 let previewRefreshTimer=null;
 $('editor').addEventListener('input',()=>{if(active&&files.has(active)){files.set(active,$('editor').value);markDirty();clearTimeout(previewRefreshTimer);previewRefreshTimer=setTimeout(runPreview,650)}});
@@ -115,7 +169,7 @@ $('runDevelopPilot').onclick=async()=>{
  setDevelopStatus('Develop Pilot is reading '+codeFiles.length+' code file(s) and planning edits…');
  try{
   if(!window.supabase?.createClient)throw new Error('Supabase client did not load. Refresh Studio and try again.');
-  if(!developSupabaseClient)developSupabaseClient=window.supabase.createClient('https://hhszfqpojhmwbmuhdmis.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+  if(!developSupabaseClient)developSupabaseClient=window.supabase.createClient('https://hhszfqpojhmwbmuhdmis.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk');
   const sessionResult=await developSupabaseClient.auth.getSession();
   if(sessionResult.error)throw sessionResult.error;
   const session=sessionResult.data?.session;
