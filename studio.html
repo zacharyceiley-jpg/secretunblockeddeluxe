@@ -20,7 +20,7 @@
 <section class="panel"><div class="panelhead"><span>Code editor</span><span id="dirty" class="muted">No file selected</span></div><div class="editorbar"><strong id="activeName">Select a file</strong><button id="downloadBtn" disabled>Download file</button><button id="deleteBtn" disabled>Remove</button></div><textarea id="editor" class="editor" spellcheck="false" placeholder="Select a text file to edit its source…"></textarea><div id="imageTools" style="display:none;padding:12px;border-top:1px solid var(--line);background:#101218"><strong>Thumbnail / image editor</strong><div class="notice" id="imageInfo">Select an image.</div><img id="imagePreview" alt="Selected thumbnail" style="display:block;max-width:100%;max-height:220px;object-fit:contain;margin:8px auto;background:#08090c;border-radius:8px"><div class="tools"><button id="replaceImageBtn">Replace image</button><input id="replaceImageInput" type="file" accept="image/*" hidden><label>Width <input id="imageWidth" type="number" min="1" max="4096" style="width:80px"></label><label>Height <input id="imageHeight" type="number" min="1" max="4096" style="width:80px"></label><select id="imageFit"><option value="contain">Fit</option><option value="cover">Crop to fill</option><option value="stretch">Stretch</option></select><button id="applyImageBtn" class="primary">Apply image edit</button></div><div class="notice">Image edits create a PNG file in the project. Export the project ZIP to keep all changes.</div></div><div class="status">Edits stay in this browser until you save the project or export a ZIP.</div></section>
 <section class="panel previewpanel"><div class="panelhead"><span>Live preview</span><div class="tools"><button id="runBtn" class="primary">Run</button><button id="fullBtn">Fullscreen</button></div></div><iframe id="preview" class="preview" sandbox="allow-scripts allow-forms allow-modals allow-pointer-lock" title="Game preview"></iframe><div class="status" id="previewStatus">Preview is isolated from the main site.</div></section>
 </div>
-<section class="pilot"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>Develop Pilot</h2><span class="pill">Developer workspace</span></div><p class="notice">Develop Pilot is the coding assistant workspace for this project. It can prepare coding tasks and work with the files loaded here. An AI model endpoint has not been connected yet, so this page will not pretend to generate AI answers until a secure backend is configured.</p><textarea id="pilotPrompt" placeholder="Describe the code change you want, e.g. add a pause menu with Resume and Restart buttons."></textarea><div class="tools"><button id="copyPrompt">Copy coding request</button><button id="downloadProject">Download current project files</button></div><div class="notice" id="pilotStatus" style="margin-top:8px">No AI service configured.</div></section>
+<section class="pilot"><div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2>✦ Develop Pilot</h2><span class="pill">AI coding assistant</span><span class="pill">Uses Site Pilot's AI secret</span></div><p class="notice">Describe a feature or bug. Develop Pilot reads the text/code files loaded in this workspace, proposes complete file edits, and lets you review them before applying. Upload your game or ZIP first. Images and other binary assets are listed by filename but are not sent as source code.</p><textarea id="pilotPrompt" placeholder="Example: Add a pause menu with Resume and Restart buttons. Inspect the existing game code and update the right files."></textarea><div class="tools"><button id="runDevelopPilot" class="primary">Ask Develop Pilot</button><button id="applyDevelopChanges" hidden>Apply proposed changes</button><button id="copyPrompt">Copy coding request</button><button id="downloadProject">Download project ZIP</button></div><div id="developReply" style="display:none;white-space:pre-wrap;overflow-wrap:anywhere;background:#0a0c10;border:1px solid var(--line);border-radius:9px;padding:12px;margin-top:10px;line-height:1.55"></div><div id="developChanges" class="notice" style="margin-top:8px"></div><div class="notice" id="pilotStatus" style="margin-top:8px">Ready. Sign in on the main site, upload your game files, then describe what you want built.</div></section>
 <p class="notice" style="margin-top:14px">Only import code you trust; uploaded games run as scripts in an isolated preview. Projects are saved only in this browser until exported, and are not automatically published to the shared game library.</p>
 </main>
 <script>
@@ -45,7 +45,57 @@ $('renameBtn').onclick=()=>{if(!active)return;const next=prompt('Rename file',ac
 $('deleteBtn').onclick=()=>{if(!active||!confirm('Remove '+active+' from this workspace?'))return;files.delete(active);active=[...files.keys()][0]||'';if(active)selectFile(active);else{$('activeName').textContent='Select a file';$('editor').value='';$('editor').disabled=true;$('downloadBtn').disabled=true;$('deleteBtn').disabled=true;renderFiles()}dirty=true};
 $('downloadBtn').onclick=()=>{if(!active||!files.has(active))return;const url=URL.createObjectURL(toBlobValue(active,files.get(active)));const a=document.createElement('a');a.href=url;a.download=active.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
 $('saveBtn').onclick=()=>exportZip();$('exportBtn').onclick=()=>exportZip();$('downloadProject').onclick=()=>exportZip();
-$('copyPrompt').onclick=async()=>{const p=$('pilotPrompt').value.trim();if(!p){alert('Describe the code change first.');return}const summary='Develop Pilot coding request\nProject files: '+[...files.keys()].join(', ')+'\nRequest: '+p+'\n\nInspect these files, propose a safe patch, and explain how to test it.';try{await navigator.clipboard.writeText(summary);$('pilotStatus').textContent='Coding request copied. AI execution requires a secure model endpoint.'}catch{$('pilotStatus').textContent=summary}};
+let pendingDevelopChanges=[];
+let developSupabaseClient=null;
+function setDevelopStatus(message,isError=false){const el=$('pilotStatus');el.textContent=message;el.style.color=isError?'#ff9d9d':'var(--muted)';}
+function escapeDevelopText(value){return String(value??'').replace(/[&<>"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));}
+$('copyPrompt').onclick=async()=>{const p=$('pilotPrompt').value.trim();if(!p){alert('Describe the code change first.');return}const summary='Develop Pilot coding request\nProject files: '+[...files.keys()].join(', ')+'\nRequest: '+p;try{await navigator.clipboard.writeText(summary);setDevelopStatus('Coding request copied.')}catch{setDevelopStatus(summary)}};
+$('runDevelopPilot').onclick=async()=>{
+ const task=$('pilotPrompt').value.trim();
+ if(!task){setDevelopStatus('Describe the feature or bug first.',true);return}
+ if(!files.size){setDevelopStatus('Upload your game files or a ZIP first.',true);return}
+ syncEditor();
+ const codeFiles=[...files.entries()].filter(([path,value])=>typeof value==='string'&&textExt.test(path)).map(([path,content])=>({path,content}));
+ if(!codeFiles.length){setDevelopStatus('No text/code files found. Upload an HTML, CSS, JS or other supported text file.',true);return}
+ const button=$('runDevelopPilot');button.disabled=true;$('applyDevelopChanges').hidden=true;$('developReply').style.display='none';$('developChanges').textContent='';pendingDevelopChanges=[];
+ setDevelopStatus('Develop Pilot is reading '+codeFiles.length+' code file(s) and planning edits…');
+ try{
+  if(!window.supabase?.createClient)throw new Error('Supabase client did not load. Refresh Studio and try again.');
+  if(!developSupabaseClient)developSupabaseClient=window.supabase.createClient('https://hhszfqpojhmwbmuhdmis.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInR5cCI6IkpXVCJ9');
+  const sessionResult=await developSupabaseClient.auth.getSession();
+  if(sessionResult.error)throw sessionResult.error;
+  const session=sessionResult.data?.session;
+  if(!session?.access_token)throw new Error('Please sign in on the main Secret Unblocked Deluxe site first, then return to Studio.');
+  const response=await fetch('https://hhszfqpojhmwbmuhdmis.supabase.co/functions/v1/develop-pilot',{
+   method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJIUzI1NiIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk'},
+   body:JSON.stringify({task,files:codeFiles})
+  });
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.error||'Develop Pilot could not complete the request.');
+  $('developReply').textContent=data.reply||'Develop Pilot prepared a response.';$('developReply').style.display='block';
+  pendingDevelopChanges=(Array.isArray(data.changes)?data.changes:[]).filter(item=>item&&typeof item.path==='string'&&typeof item.content==='string'&&textExt.test(item.path)&&!item.path.startsWith('/')&&!item.path.replace(/\\/g,'/').split('/').includes('..')).slice(0,6);
+  if(pendingDevelopChanges.length){
+   $('developChanges').textContent='Proposed file changes (not applied yet): '+pendingDevelopChanges.map(x=>x.path).join(', ')+'. Review the summary, then click Apply proposed changes.';
+   $('applyDevelopChanges').hidden=false;
+   setDevelopStatus('Done — '+pendingDevelopChanges.length+' file(s) ready for review.');
+  }else{
+   $('developChanges').textContent='No file edits were proposed for this request.';
+   setDevelopStatus('Response received. No files were changed.');
+  }
+ }catch(error){setDevelopStatus(error?.message||'Something went wrong. Try again.',true)}
+ finally{button.disabled=false}
+};
+$('applyDevelopChanges').onclick=()=>{
+ if(!pendingDevelopChanges.length)return;
+ const names=pendingDevelopChanges.map(x=>x.path);
+ if(!confirm('Apply Develop Pilot\'s proposed changes to these files?\n\n'+names.join('\n')+'\n\nYour workspace will be marked unsaved so you can review and export it.'))return;
+ for(const item of pendingDevelopChanges)files.set(item.path,item.content);
+ active=pendingDevelopChanges.find(x=>x.path===active)?.path||pendingDevelopChanges[0].path;
+ selectFile(active);dirty=true;markDirty();runPreview();
+ $('applyDevelopChanges').hidden=true;$('developChanges').textContent='Applied to your Studio workspace: '+names.join(', ')+'. Save the project or export a ZIP to keep the changes.';
+ setDevelopStatus('Changes applied to the local workspace. They are not published automatically.');
+ pendingDevelopChanges=[];
+};
 
 function isImage(name){return /\.(png|jpe?g|gif|webp|bmp|svg|ico)$/i.test(name||'')}
 function imageData(name,val){if(typeof val!=='string')return '';if(/\.svg$/i.test(name))return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(val);const ext=(name.match(/\.([^.]+)$/)||[])[1]?.toLowerCase();const mime=({png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',bmp:'image/bmp',ico:'image/x-icon'})[ext];return mime?'data:'+mime+';base64,'+val:''}
@@ -71,10 +121,11 @@ async function updateStudioAuthStatus(){
  if(!el)return;
  try{
   if(!window.supabase?.createClient){el.textContent='Sign-in status unavailable';return}
-  const client=window.supabase.createClient(
+  const client=developSupabaseClient||window.supabase.createClient(
    "https://hhszfqpojhmwbmuhdmis.supabase.co",
-   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk"
+   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQi:1790144460"
   );
+  developSupabaseClient=client;
   const {data,error}=await client.auth.getSession();
   if(error)throw error;
   const user=data?.session?.user;
