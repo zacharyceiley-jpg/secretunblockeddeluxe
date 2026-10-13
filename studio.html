@@ -3,12 +3,13 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>HTML Studio · Secret Unblocked Deluxe</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <style>
 :root{color-scheme:dark;--bg:#0c0e12;--panel:#14171d;--panel2:#1a1e26;--line:#292e38;--text:#f4f6fa;--muted:#9da5b3;--accent:#7c5cff}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:14px system-ui,-apple-system,Segoe UI,sans-serif}button,input,textarea{font:inherit}button{cursor:pointer;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:9px 12px}button.primary{background:var(--accent);border-color:var(--accent);font-weight:700}button:disabled{opacity:.45;cursor:not-allowed}.top{height:62px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:14px;padding:0 20px}.brand{font-weight:800;font-size:16px}.brand span{color:#a998ff}.top .grow{flex:1}.wrap{max-width:1500px;margin:auto;padding:20px}.intro{display:flex;justify-content:space-between;gap:18px;align-items:center;flex-wrap:wrap;margin-bottom:18px}.intro h1{font-size:27px;margin:0 0 6px}.muted{color:var(--muted)}.tools{display:flex;gap:8px;flex-wrap:wrap}.importbar{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:14px}.field{width:100%;padding:11px 12px;border:1px solid var(--line);background:#090b0f;color:var(--text);border-radius:9px;min-width:0}.workspace{display:grid;grid-template-columns:220px minmax(0,1fr) minmax(280px,.85fr);gap:12px;min-height:65vh}.panel{background:var(--panel);border:1px solid var(--line);border-radius:13px;overflow:hidden;min-width:0}.panelhead{padding:12px 14px;border-bottom:1px solid var(--line);font-weight:750;display:flex;align-items:center;justify-content:space-between;gap:8px}.files{padding:8px;max-height:58vh;overflow:auto}.file{display:block;width:100%;text-align:left;background:transparent;border:0;padding:9px;border-radius:7px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.file.active,.file:hover{background:#29243f}.editorbar{display:flex;align-items:center;gap:8px;padding:9px;border-bottom:1px solid var(--line)}.editorbar strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}.editor{display:block;width:100%;height:53vh;resize:vertical;border:0;outline:0;background:#0a0c10;color:#e9e8ff;padding:14px;font:13px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;tab-size:2}.preview{width:100%;height:65vh;background:white;border:0;display:block}.status{font-size:12px;color:var(--muted);padding:9px 12px;border-top:1px solid var(--line)}.drop{border:1px dashed #51477c;background:#171426;border-radius:12px;padding:14px;margin-bottom:14px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.drop strong{display:block;margin-bottom:4px}.notice{font-size:12px;color:var(--muted);line-height:1.5}.pilot{margin-top:14px;padding:15px;background:linear-gradient(135deg,#19152b,#14171d);border:1px solid #3c315f;border-radius:12px}.pilot h2{font-size:17px;margin:0 0 6px}.pilot textarea{width:100%;min-height:76px;resize:vertical;margin:10px 0;padding:11px;background:#0a0c10;border:1px solid var(--line);border-radius:9px;color:var(--text)}.pill{font-size:11px;color:#c4b8ff;border:1px solid #4b3d78;border-radius:999px;padding:4px 8px}.empty{padding:24px;text-align:center;color:var(--muted)}@media(max-width:1000px){.workspace{grid-template-columns:190px minmax(0,1fr)}.previewpanel{grid-column:1/-1}.preview{height:55vh}}@media(max-width:650px){.wrap{padding:12px}.workspace{grid-template-columns:1fr}.files{max-height:190px}.editor{height:45vh}.previewpanel{grid-column:auto}.top{padding:0 12px}.importbar{grid-template-columns:1fr}.intro h1{font-size:23px}}
 </style></head>
 <body>
-<header class="top"><a href="./" style="color:inherit;text-decoration:none">← Back to site</a><div class="brand">Secret Unblocked <span>HTML Studio</span></div><div class="grow"></div><span class="pill">Local workspace</span></header>
+<header class="top"><a href="./" style="color:inherit;text-decoration:none">← Back to site</a><div class="brand">Secret Unblocked <span>HTML Studio</span></div><div class="grow"></div><span id="authStatus" class="pill">Checking sign-in…</span><span class="pill">Local workspace</span></header>
 <main class="wrap">
 <section class="intro"><div><h1>HTML Game Studio</h1><div class="muted">Import a game, browse its files, edit code and test it before publishing.</div></div><div class="tools"><button id="newBtn">New HTML</button><button id="saveBtn" class="primary">Save project</button><button id="exportBtn">Export ZIP</button></div></section>
 <section class="projectbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px"><strong>Projects</strong><select id="projectSelect" class="field" style="width:auto;min-width:190px"><option value="">Unsaved workspace</option></select><button id="newProjectBtn">New project</button><button id="saveLocalBtn" class="primary">Save project</button><span class="notice">Switch between projects saved in this browser.</span></section>
@@ -62,5 +63,30 @@ $('replaceImageBtn').onclick=()=>$('replaceImageInput').click();
 $('replaceImageInput').onchange=async e=>{const f=e.target.files[0];if(!f||!active)return;const b64=await new Promise((resolve,reject)=>{const rd=new FileReader();rd.onload=()=>resolve(String(rd.result).split(',')[1]);rd.onerror=reject;rd.readAsDataURL(f)});const old=active,ext=(f.name.match(/\.[^.]+$/)||['.png'])[0].toLowerCase(),next=old.replace(/\.[^.]+$/,'')+ext;files.set(next,b64);if(next!==old)files.delete(old);active=next;selectFile(next);dirty=true;setStatus();e.target.value=''};
 $('applyImageBtn').onclick=()=>{if(!active||!isImage(active))return;const src=imageData(active,files.get(active));const img=new Image();img.onload=()=>{const w=Math.max(1,Math.min(4096,parseInt($('imageWidth').value)||img.naturalWidth)),h=Math.max(1,Math.min(4096,parseInt($('imageHeight').value)||img.naturalHeight)),c=document.createElement('canvas');c.width=w;c.height=h;const ctx=c.getContext('2d'),mode=$('imageFit').value;if(mode==='cover'){const scale=Math.max(w/img.naturalWidth,h/img.naturalHeight),sw=w/scale,sh=h/scale;ctx.drawImage(img,(img.naturalWidth-sw)/2,(img.naturalHeight-sh)/2,sw,sh,0,0,w,h)}else if(mode==='contain'){const scale=Math.min(w/img.naturalWidth,h/img.naturalHeight),dw=img.naturalWidth*scale,dh=img.naturalHeight*scale;ctx.drawImage(img,(w-dw)/2,(h-dh)/2,dw,dh)}else ctx.drawImage(img,0,0,w,h);c.toBlob(blob=>{if(!blob){alert('Could not edit this image.');return}const rd=new FileReader();rd.onload=()=>{const next=active.replace(/\.[^.]+$/,'')+'-edited.png';files.set(next,String(rd.result).split(',')[1]);active=next;selectFile(next);dirty=true;setStatus()};rd.readAsDataURL(blob)},'image/png')};img.onerror=()=>alert('Could not load this image.');img.src=src};
 refreshProjects();
+updateStudioAuthStatus();
 $('editor').disabled=true;
+
+async function updateStudioAuthStatus(){
+ const el=document.getElementById('authStatus');
+ if(!el)return;
+ try{
+  if(!window.supabase?.createClient){el.textContent='Sign-in status unavailable';return}
+  const client=window.supabase.createClient(
+   "https://hhszfqpojhmwbmuhdmis.supabase.co",
+   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamR3Ym1haGRtaXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc5MDE0NDQ2MCwiZXhwIjoyMTA1NzIwNDYwfQ.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk"
+  );
+  const {data,error}=await client.auth.getSession();
+  if(error)throw error;
+  const user=data?.session?.user;
+  el.textContent=user?'Signed in: '+(user.email||'account'):'Not signed in';
+  el.title=user?'Signed in to Secret Unblocked Deluxe':'Sign in on the main site, then return to Studio';
+  el.style.borderColor=user?'#347a55':'#765b35';
+  client.auth.onAuthStateChange((_event,session)=>{
+   const u=session?.user;
+   el.textContent=u?'Signed in: '+(u.email||'account'):'Not signed in';
+   el.title=u?'Signed in to Secret Unblocked Deluxe':'Sign in on the main site, then return to Studio';
+   el.style.borderColor=u?'#347a55':'#765b35';
+  });
+ }catch(e){el.textContent='Sign-in status unavailable';console.error('Studio auth status',e)}
+}
 </script></body></html>
