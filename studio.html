@@ -98,7 +98,7 @@ $('fullBtn').onclick=()=>{const f=$('preview');if(f.requestFullscreen)f.requestF
 $('renameBtn').onclick=()=>{if(!active)return;const next=prompt('Rename file',active);if(!next||next===active)return;if(files.has(next)){alert('A file with that name already exists.');return}files.set(next,files.get(active));files.delete(active);active=next;selectFile(next);dirty=true};
 $('deleteBtn').onclick=()=>{if(!active||!confirm('Remove '+active+' from this workspace?'))return;files.delete(active);active=[...files.keys()][0]||'';if(active)selectFile(active);else{$('activeName').textContent='Select a file';$('editor').value='';$('editor').disabled=true;$('downloadBtn').disabled=true;$('deleteBtn').disabled=true;renderFiles()}dirty=true};
 $('downloadBtn').onclick=()=>{if(!active||!files.has(active))return;const url=URL.createObjectURL(toBlobValue(active,files.get(active)));const a=document.createElement('a');a.href=url;a.download=active.split('/').pop();a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
-$('saveBtn').onclick=()=>exportZip();$('exportBtn').onclick=()=>exportZip();$('downloadProject').onclick=()=>exportZip();
+$('saveBtn').onclick=saveLocalProject;$('exportBtn').onclick=()=>exportZip();$('downloadProject').onclick=()=>exportZip();
 let pendingDevelopChanges=[];
 let developSupabaseClient=null;
 function setDevelopStatus(message,isError=false){const el=$('pilotStatus');el.textContent=message;el.style.color=isError?'#ff9d9d':'var(--muted)';}
