@@ -950,12 +950,12 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       const type=(response.headers.get("content-type")||"").toLowerCase();
       const rawText=await response.text();
       // Ignore a UTF-8 BOM, whitespace, and leading comments/XML declarations when detecting HTML.
-      const text=rawText.replace(/^\\uFEFF/,"").trimStart();
+      const text=rawText.replace(/^\uFEFF/,"").trimStart();
       const withoutPreamble=text
-        .replace(/^(?:<\\?xml[^>]*>\\s*)+/i,"")
-        .replace(/^(?:<!--[\\s\\S]*?-->\\s*)+/,"")
+        .replace(/^(?:<\?xml[^>]*>\s*)+/i,"")
+        .replace(/^(?:<!--[\s\S]*?-->\s*)+/,"")
         .trimStart();
-      const startsLikeHtml=/^(?:<!doctype\\s+html\\b|<html\\b|<head\\b|<body\\b|<meta\\b|<title\\b|<script\\b|<style\\b|<div\\b|<main\\b|<canvas\\b|<svg\\b|<iframe\\b|<link\\b|<section\\b|<article\\b|<\\?xml)/i.test(withoutPreamble);
+      const startsLikeHtml=/^(?:<!doctype\s+html\b|<html\b|<head\b|<body\b|<meta\b|<title\b|<script\b|<style\b|<div\b|<main\b|<canvas\b|<svg\b|<iframe\b|<link\b|<section\b|<article\b|<\?xml)/i.test(withoutPreamble);
       const isPlainTextHtmlSource=!type.includes("text/html") && startsLikeHtml;
       if(!isPlainTextHtmlSource)return;
       // Rebase relative assets so images, scripts, stylesheets and links still resolve at the source URL.
@@ -971,7 +971,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       }
       // srcdoc makes browsers parse the HTML as a document instead of displaying the source text.
       frame.removeAttribute("src");
-      frame.srcdoc="<!doctype html>\\n"+parsed.documentElement.outerHTML;
+      frame.srcdoc="<!doctype html>\n"+parsed.documentElement.outerHTML;
     }catch(error){
       // If the host blocks cross-origin fetching, preserve the existing direct-URL fallback.
       console.info("Using direct game URL fallback:",error?.message||error);
