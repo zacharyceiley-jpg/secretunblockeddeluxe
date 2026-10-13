@@ -73,7 +73,7 @@ async function updateStudioAuthStatus(){
   if(!window.supabase?.createClient){el.textContent='Sign-in status unavailable';return}
   const client=window.supabase.createClient(
    "https://hhszfqpojhmwbmuhdmis.supabase.co",
-   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamR3Ym1haGRtaXMiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc5MDE0NDQ2MCwiZXhwIjoyMTA1NzIwNDYwfQ.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk"
+   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk"
   );
   const {data,error}=await client.auth.getSession();
   if(error)throw error;
