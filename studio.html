@@ -57,7 +57,7 @@ function runPreview(){
  try{
   const parser=new DOMParser();
   const doc=parser.parseFromString(String(files.get(entry)||''),'text/html');
-  const replaceAssets=(css,fromFile)=>String(css).replace(/url\\(\\s*(['"]?)([^)'"]+)\\1\\s*\\)/gi,(match,q,path)=>{
+  const replaceAssets=(css,fromFile)=>String(css).replace(/url\(\s*(['"]?)([^)'"]+)\1\s*\)/gi,(match,q,path)=>{
    const key=resolveProjectPath(fromFile,path);if(!key||!files.has(key))return match;
    const uri=assetDataUri(key,files.get(key));return uri?'url("'+uri+'")':match;
   });
@@ -70,7 +70,7 @@ function runPreview(){
   for(const script of [...doc.querySelectorAll('script[src]')]){
    const key=resolveProjectPath(entry,script.getAttribute('src'));
    if(key&&files.has(key)&&typeof files.get(key)==='string'&&textExt.test(key)){
-    script.removeAttribute('src');script.textContent=String(files.get(key)).replace(/<\\/script/gi,'<\\\\/script');
+    script.removeAttribute('src');script.textContent=String(files.get(key)).replace(/<\/script/gi,'<\\/script');
    }
   }
   for(const el of [...doc.querySelectorAll('[src], [poster], [href]')]){
