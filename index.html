@@ -96,6 +96,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
   .exclusive-theme-card{background:linear-gradient(145deg,var(--panel),#101218);border:1px solid var(--line);border-radius:18px;overflow:hidden}
   .exclusive-theme-preview{height:145px;background:#171a22 center/cover no-repeat;position:relative}
+  .exclusive-theme-preview.tds-preview{background-image:linear-gradient(0deg,rgba(0,0,0,.45),transparent),url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSJas3xIMFSbkECnSpMre_PrmU45tkNjuGz1e2P7zmoew&s=10")}
   .exclusive-theme-preview.sfoth-preview{background-image:linear-gradient(0deg,rgba(0,0,0,.45),transparent),url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQD6SqgTJvbdOv6nuk-zpOfVbEs15Y0RUeuAtJ9zDzs8F5wLC1d4shN7m8&s=10")}
   .exclusive-theme-body{padding:18px}
   .exclusive-theme-body h3{margin:0 0 8px}
@@ -105,6 +106,9 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   .theme-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
   .theme-message{min-height:22px;color:var(--muted);font-size:13px;margin-top:10px}
   .settings-note{color:var(--muted);line-height:1.6;max-width:760px}
+  body.tds-exclusive-theme{background-image:linear-gradient(180deg,rgba(8,12,20,.42),rgba(8,12,20,.68)),url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSJas3xIMFSbkECnSpMre_PrmU45tkNjuGz1e2P7zmoew&s=10");background-size:cover;background-position:center;background-attachment:fixed}
+  @keyframes tdsTextDrift{0%{transform:translateX(-5px)}100%{transform:translateX(5px)}}
+  body.tds-exclusive-theme :is(h1,h2,h3,p,a,button,strong,span,label,.eyebrow,.game-title,.game-description){animation:tdsTextDrift 1.4s ease-in-out infinite alternate}
   body.sfoth-exclusive-theme{background-image:linear-gradient(180deg,rgba(7,10,18,.55),rgba(7,10,18,.78)),url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQD6SqgTJvbdOv6nuk-zpOfVbEs15Y0RUeuAtJ9zDzs8F5wLC1d4shN7m8&s=10");background-size:cover;background-position:center;background-attachment:fixed}
   body.sfoth-exclusive-theme main{background:rgba(8,11,18,.18)}
   body.sfoth-exclusive-theme .topbar{background:rgba(7,10,18,.84)}
@@ -208,6 +212,16 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
               <button id="sfothThemeApply" class="primary" type="button" disabled>Use Theme</button>
               <button id="sfothThemeDefault" class="secondary" type="button">Use Default Theme</button>
             </div>
+          </div>
+        </article>
+        <article id="tdsThemeCard" class="exclusive-theme-card hidden">
+          <div class="exclusive-theme-preview tds-preview"></div>
+          <div class="exclusive-theme-body">
+            <div id="tdsThemeStatus" class="theme-status">🔒 Owner only</div>
+            <h3>Owner Perk — TDS</h3>
+            <p>Tower Defense Simulator background with text that gently moves back and forth.</p>
+            <p class="small-note">Automatically available to Deluxe admins/owner accounts.</p>
+            <div class="theme-actions"><button id="tdsThemeApply" class="primary" type="button" disabled>Use Theme</button></div>
           </div>
         </article>
       </div>
@@ -425,6 +439,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
   // Exclusive themes are stored on the signed-in Supabase profile.
   const EXCLUSIVE_THEME_ASSETS = {
+    tds: { background: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSJas3xIMFSbkECnSpMre_PrmU45tkNjuGz1e2P7zmoew&s=10" },
     sfoth: {
       background: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQD6SqgTJvbdOv6nuk-zpOfVbEs15Y0RUeuAtJ9zDzs8F5wLC1d4shN7m8&s=10",
       favicon: "https://tr.rbxcdn.com/180DAY-f07b39309cdc872befeb22f306dadb59/420/420/WaistAccessory/Webp/noFilter"
@@ -439,7 +454,9 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
 
   function applyExclusiveTheme(){
     const active = currentProfile?.active_theme === "sfoth" && getUnlockedExclusiveThemes().includes("sfoth");
+    const tdsActive = currentProfile?.active_theme === "tds" && currentRole === "admin";
     document.body.classList.toggle("sfoth-exclusive-theme", active);
+    document.body.classList.toggle("tds-exclusive-theme", tdsActive);
     let fontLink = document.getElementById("sfothPermanentMarkerFont");
     let icon = document.querySelector("link[data-exclusive-theme-icon='true']");
     if (active) {
@@ -466,6 +483,17 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   }
 
   function renderExclusiveThemeSettings(){
+    const tdsStatus = $("tdsThemeStatus");
+    const tdsApply = $("tdsThemeApply");
+    const tdsCard = $("tdsThemeCard");
+    const tdsActive = currentProfile?.active_theme === "tds" && currentRole === "admin";
+    if (tdsCard) tdsCard.classList.toggle("hidden", currentRole !== "admin");
+    if (tdsStatus && tdsApply) {
+      tdsStatus.classList.toggle("unlocked", currentRole === "admin");
+      tdsStatus.textContent = currentRole === "admin" ? (tdsActive ? "✓ Owner perk · Active" : "✓ Owner perk unlocked") : "🔒 Owner only";
+      tdsApply.disabled = currentRole !== "admin";
+      tdsApply.textContent = tdsActive ? "Theme Active" : "Use Theme";
+    }
     const status = $("sfothThemeStatus");
     const applyButton = $("sfothThemeApply");
     const requirement = $("sfothThemeRequirement");
@@ -514,7 +542,12 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       if (message) message.textContent = "Sign in to use account-synced themes.";
       return;
     }
-    if (themeId !== "default" && !getUnlockedExclusiveThemes().includes(themeId)) {
+    if (themeId === "tds" && currentRole !== "admin") {
+      const message = $("exclusiveThemeMessage");
+      if (message) message.textContent = "The TDS theme is an owner-only perk.";
+      return;
+    }
+    if (themeId !== "default" && themeId !== "tds" && !getUnlockedExclusiveThemes().includes(themeId)) {
       const message = $("exclusiveThemeMessage");
       if (message) message.textContent = "Play SFOTH IV on Deluxe to unlock this theme.";
       return;
@@ -530,9 +563,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     applyExclusiveTheme();
     renderExclusiveThemeSettings();
     const message = $("exclusiveThemeMessage");
-    if (message) message.textContent = themeId === "sfoth" ? "SFOTH theme applied and synced to your account." : "Default theme applied and synced to your account.";
+    if (message) message.textContent = themeId === "sfoth" ? "SFOTH theme applied and synced to your account." : themeId === "tds" ? "Owner-only TDS theme applied and synced to your account." : "Default theme applied and synced to your account.";
   }
 
+  $("tdsThemeApply")?.addEventListener("click", () => selectExclusiveTheme("tds"));
   $("sfothThemeApply")?.addEventListener("click", () => selectExclusiveTheme("sfoth"));
   $("sfothThemeDefault")?.addEventListener("click", () => selectExclusiveTheme("default"));
 
