@@ -1160,8 +1160,14 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     // content sandboxed without allow-same-origin so untrusted games cannot reach Deluxe.
     let gameIsExternal=false;
     try{ gameIsExternal=new URL(url,window.location.href).origin!==window.location.origin; }catch(_){}
-    if(gameIsExternal) frame.setAttribute("sandbox","allow-scripts allow-same-origin allow-forms allow-popups allow-pointer-lock allow-downloads");
-    else frame.setAttribute("sandbox","allow-scripts allow-forms allow-popups allow-pointer-lock allow-downloads");
+    if(gameIsExternal) {
+      // External games need normal browser storage and common embedded-game features.
+      // These permissions do not override a site's own X-Frame-Options/CSP restrictions.
+      frame.setAttribute("sandbox","allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-pointer-lock allow-downloads allow-modals allow-top-navigation-by-user-activation");
+    } else {
+      // Keep same-origin uploads isolated from the Deluxe page.
+      frame.setAttribute("sandbox","allow-scripts allow-forms allow-popups allow-pointer-lock allow-downloads allow-modals");
+    }
     frame.src=url;
     try{
       const response=await fetch(url,{mode:"cors",credentials:"omit",cache:"no-store"});
@@ -1190,7 +1196,7 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
       }
       // srcdoc inherits the Deluxe origin. Remove allow-same-origin before loading it
       // so uploaded HTML remains isolated from the main site.
-      frame.setAttribute("sandbox","allow-scripts allow-forms allow-popups allow-pointer-lock allow-downloads");
+      frame.setAttribute("sandbox","allow-scripts allow-forms allow-popups allow-pointer-lock allow-downloads allow-modals");
       frame.removeAttribute("src");
       frame.srcdoc="<!doctype html>\n"+parsed.documentElement.outerHTML;
     }catch(error){
