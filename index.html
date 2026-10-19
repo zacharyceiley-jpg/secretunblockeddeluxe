@@ -92,8 +92,14 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     .game-discovery-section{margin-top:30px}
     .game-discovery-section .section-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
     .game-discovery-section .section-heading h2{margin:0}
-    .game-discovery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:13px}
-    .game-discovery-grid .game-card{cursor:pointer}
+    .game-discovery-grid{display:flex;gap:13px;overflow-x:auto;overflow-y:hidden;padding:2px 2px 14px;scroll-snap-type:x proximity;scrollbar-width:thin}
+    .game-discovery-grid .game-card{cursor:pointer;flex:0 0 168px;width:168px;scroll-snap-align:start}
+    #gameGrid .game-thumb{aspect-ratio:1/1;height:auto}
+    #gameGrid .game-thumb img{object-fit:cover}
+    #gameGrid .game-card .game-card-body{opacity:1;inset:auto 0 0;min-height:56px;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.88));}
+    #gameGrid .game-card .game-title{font-size:14px;line-height:1.25}
+    #gameGrid .game-card .game-card-actions{display:none}
+    @media(max-width:620px){.game-discovery-grid .game-card{flex-basis:142px;width:142px}}
     .game-detail-layout{display:grid;grid-template-columns:minmax(180px,300px) minmax(0,1fr);gap:24px;align-items:start}
     .game-detail-thumbnail{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
     .game-detail-description{color:var(--muted);line-height:1.65;white-space:pre-wrap}
@@ -1123,7 +1129,8 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
   function renderDiscoveryCard(g) {
     const title = escapeHtml(g.title || "Untitled Game");
-    const thumb = g.thumbnail_url && validGameUrl(g.thumbnail_url) ? `<img src="${escapeHtml(g.thumbnail_url)}" alt="">` : "🎮";
+    const cardIcon = g.icon_url || g.thumbnail_url;
+    const thumb = cardIcon && validGameUrl(cardIcon) ? `<img src="${escapeHtml(cardIcon)}" alt="">` : "🎮";
     return `<article class="game-card" tabindex="0" role="button" aria-label="View ${title}" onclick="openGameDetails('${g.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openGameDetails('${g.id}')}">
       <div class="game-thumb">${thumb}</div><div class="game-card-body"><div class="game-title">${title}</div>
       <div class="game-card-actions"><button class="primary" onclick="event.stopPropagation();openGameDetails('${g.id}')">View game</button></div></div></article>`;
@@ -1175,7 +1182,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
 
     const publicResult = await sb.from("games")
-      .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)")
+      .select("id,title,description,thumbnail_url,icon_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)")
       .eq("status","published")
       .order("created_at",{ascending:false});
 
@@ -1291,7 +1298,7 @@ body.light-mode .pilot-welcome{color:#626d80}
 
   async function openGame(id){
     if (!sb) return;
-    const {data,error} = await sb.from("games").select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)").eq("id",id).maybeSingle();
+    const {data,error} = await sb.from("games").select("id,title,description,thumbnail_url,icon_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)").eq("id",id).maybeSingle();
     if (error || !data) return alert(error?.message || "Game not found.");
     if (data.status !== "published" && data.creator_id !== currentUser?.id && currentRole !== "admin") return alert("This game is not published.");
     currentGame = data;
