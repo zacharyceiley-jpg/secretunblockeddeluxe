@@ -2054,7 +2054,7 @@ function getStudioSupabaseClient(){
  // Reuse the main Deluxe client so Studio reads the exact same signed-in session.
  if(typeof sb!=='undefined'&&sb){studioSharedSupabaseClient=sb;return sb;}
  if(!window.supabase?.createClient)throw new Error('Supabase client failed to load. Refresh the page.');
- if(!studioSharedSupabaseClient)studioSharedSupabaseClient=window.supabase.createClient(PUBLISH_SUPABASE_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc2pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
+ if(!studioSharedSupabaseClient)studioSharedSupabaseClient=window.supabase.createClient(PUBLISH_SUPABASE_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc2ZxcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
  return studioSharedSupabaseClient;
 }
 function publishMessage(message,isError=false){const el=$('publishStatus');el.textContent=message;el.style.color=isError?'#ff9d9d':'var(--muted)';}
