@@ -285,10 +285,11 @@ body.light-mode .pilot-welcome{color:#626d80}
       <div class="page-title">
         <p class="eyebrow">DELUXE</p>
         <h1>Games</h1>
-        <p>Browse and play published games. Create and manage your games in HTML Studio.</p>
+        <p>Browse published games, play your favourites, or add your own game.</p>
       </div>
       <div class="game-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <input id="gameSearch" class="game-search" type="search" placeholder="Search games…" style="flex:1;min-width:190px">
+        <button class="primary" id="openGameUploader" type="button" title="Add a game" aria-label="Add a game">＋ Add game</button>
         <button class="secondary" type="button" onclick="showDeluxePlaytime()">⏱ Playtime</button>
       </div>
       <div class="game-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
@@ -303,6 +304,34 @@ body.light-mode .pilot-welcome{color:#626d80}
         <div id="gameGrid" class="user-grid"><div class="loading">Loading games…</div></div>
       </div>
     </section>
+
+    <div id="gameUploader" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" id="gameUploaderBackdrop"></div>
+      <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="gameEditorTitle">
+        <button class="modal-close" type="button" id="cancelGameUploader" aria-label="Close">×</button>
+        <p class="eyebrow" id="gameEditorEyebrow">GAME CREATOR</p>
+        <h2 id="gameEditorTitle">Add a game</h2>
+        <p class="small-note">Add a hosted game using its URL. Your submission may need admin approval before it appears in the library.</p>
+        <form id="gameForm">
+          <label class="small-note" for="gameTitle">Game title</label>
+          <input id="gameTitle" class="field" type="text" maxlength="90" required placeholder="My awesome game">
+          <label class="small-note" for="gameDescription">Description</label>
+          <textarea id="gameDescription" class="field" rows="3" maxlength="600" placeholder="What is your game about?"></textarea>
+          <label class="small-note" for="gameUrl">Game URL</label>
+          <input id="gameUrl" class="field" type="url" required placeholder="https://example.com/game">
+          <label class="small-note" for="gameThumbnail">Thumbnail image URL</label>
+          <input id="gameThumbnail" class="field" type="url" placeholder="https://example.com/thumbnail.png">
+          <label class="small-note" for="gameIcon">Game icon URL (optional)</label>
+          <input id="gameIcon" class="field" type="url" placeholder="https://example.com/icon.png">
+          <label class="small-note" style="display:flex;align-items:center;gap:8px;margin:12px 0"><input id="gameChatEnabled" type="checkbox" checked> Allow game chat</label>
+          <div id="gameFormMessage" class="auth-message" role="status" aria-live="polite"></div>
+          <div class="game-card-actions" style="justify-content:flex-end;margin-top:14px">
+            <button class="secondary" type="button" id="cancelGameUploaderButton">Cancel</button>
+            <button class="primary" type="submit" id="submitGameButton">Submit game</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
     <section id="gameDetailPage" class="page">
       <div id="gameDetailRoot"></div>
@@ -1150,12 +1179,14 @@ body.light-mode .pilot-welcome{color:#626d80}
     const genres = Array.isArray(g.genres) ? g.genres : (Array.isArray(g.tags) ? g.tags : []);
     const tags = genres.map(tag => `<span class="game-tag">${escapeHtml(tag)}</span>`).join("");
     const age = g.age_recommendation || g.age_rating || "Not specified";
-    $("gameDetailRoot").innerHTML = `<div class="page-title"><button class="secondary" onclick="showPage('games')">← Back to games</button><p class="eyebrow" style="margin-top:18px">GAME DETAILS</p><h1>${escapeHtml(g.title || "Untitled Game")}</h1></div>
+    const editButton = currentUser && g.creator_id === currentUser.id ? ` <button class="secondary game-title-edit" type="button" title="Edit this game" aria-label="Edit this game" onclick="editMyGame('${g.id}')">✎</button>` : "";
+    $("gameDetailRoot").innerHTML = `<div class="page-title"><button class="secondary" onclick="showPage('games')">← Back to games</button><p class="eyebrow" style="margin-top:18px">GAME DETAILS</p><h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${escapeHtml(g.title || "Untitled Game")}${editButton}</h1></div>
       <div class="game-detail-layout">${thumb}<div><h2>${escapeHtml(g.title || "Untitled Game")}</h2><p class="game-detail-description">${escapeHtml(g.description || "No description has been added yet.")}</p>
       <div>${tags || '<span class="game-tag">Genre not set</span>'}</div><p class="game-meta">Age recommendation: ${escapeHtml(age)}</p>
       <p class="game-meta">Created by ${escapeHtml(g.profiles?.username || "Unknown creator")}</p><div class="game-card-actions"><button class="primary" onclick="playGameFromDetails('${g.id}')">▶ Play</button></div></div></div>`;
     showPage("gameDetail");
   }
+
   function playGameFromDetails(id) {
     rememberDeluxeGame(id);
     startDeluxePlayTracking(id);
@@ -1231,16 +1262,24 @@ body.light-mode .pilot-welcome{color:#626d80}
     event.preventDefault();
     if (!sb || !currentUser) return openAuth("login");
     if (editingGameId) return updateGame(editingGameId);
-    const title=$("gameTitle").value.trim(), description=$("gameDescription").value.trim(), thumbnail_url=$("gameThumbnail").value.trim(), game_url=$("gameUrl").value.trim();
+    const title=$("gameTitle").value.trim();
+    const description=$("gameDescription").value.trim();
+    const thumbnail_url=$("gameThumbnail").value.trim();
+    const icon_url=$("gameIcon").value.trim();
+    const game_url=$("gameUrl").value.trim();
     if(!title) return setGameFormMessage("Enter a game title.",true);
     if(!validGameUrl(game_url)) return setGameFormMessage("Enter a valid HTTP or HTTPS game URL.",true);
     if(thumbnail_url && !validGameUrl(thumbnail_url)) return setGameFormMessage("The thumbnail URL must be HTTP or HTTPS.",true);
-    $("submitGameButton").disabled=true; setGameFormMessage("Submitting game…");
-    const {error}=await sb.from("games").insert({creator_id:currentUser.id,title,description,thumbnail_url:thumbnail_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,status:"pending"});
+    if(icon_url && !validGameUrl(icon_url)) return setGameFormMessage("The icon URL must be HTTP or HTTPS.",true);
+    $("submitGameButton").disabled=true;
+    setGameFormMessage("Submitting game…");
+    const {error}=await sb.from("games").insert({creator_id:currentUser.id,title,description,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,status:"pending"});
     $("submitGameButton").disabled=false;
     if(error){console.error(error);return setGameFormMessage(error.message,true);}
+    $("gameForm").reset();
+    $("gameChatEnabled").checked=true;
     setGameFormMessage("Game submitted! It is waiting for admin approval.");
-    resetGameEditor(); await loadGames();
+    await loadGames();
   }
 
   async function deleteMyGame(id){
@@ -1254,26 +1293,28 @@ body.light-mode .pilot-welcome{color:#626d80}
 
   async function editMyGame(id){
     if (!sb || !currentUser) return openAuth("login");
-    const game = allMyGames.find(g => g.id === id);
-    if (!game) return;
+    const game = allPublishedGames.find(g => g.id === id);
+    if (!game || game.creator_id !== currentUser.id) return;
     editingGameId = id;
-    $("gameEditorEyebrow").textContent = "CREATOR TOOLS";
+    $("gameEditorEyebrow").textContent = "YOUR GAME";
     $("gameEditorTitle").textContent = "Edit your game";
-    $("submitGameButton").textContent = "Save Changes";
+    $("submitGameButton").textContent = "Save changes";
     $("gameTitle").value = game.title || "";
     $("gameDescription").value = game.description || "";
     $("gameThumbnail").value = game.thumbnail_url || "";
+    $("gameIcon").value = game.icon_url || "";
     $("gameUrl").value = game.game_url || "";
     $("gameChatEnabled").checked = game.chat_enabled !== false;
+    $("gameFormMessage").textContent = "";
     $("gameUploader").classList.remove("hidden");
     $("gameTitle").focus();
   }
 
   function resetGameEditor(){
     editingGameId = null;
-    $("gameEditorTitle").textContent = "Submit a game";
-    $("submitGameButton").textContent = "Submit Game";
-    $("gameChatEnabled").checked = true;
+    $("gameEditorEyebrow").textContent = "GAME CREATOR";
+    $("gameEditorTitle").textContent = "Add a game";
+    $("submitGameButton").textContent = "Submit game";
     $("gameForm")?.reset();
     $("gameChatEnabled").checked = true;
     $("gameFormMessage").textContent = "";
@@ -1283,17 +1324,22 @@ body.light-mode .pilot-welcome{color:#626d80}
     const title = $("gameTitle").value.trim();
     const description = $("gameDescription").value.trim();
     const thumbnail_url = $("gameThumbnail").value.trim();
+    const icon_url = $("gameIcon").value.trim();
     const game_url = $("gameUrl").value.trim();
     if (!title) return setGameFormMessage("Enter a game title.", true);
     if (!validGameUrl(game_url)) return setGameFormMessage("Enter a valid HTTP or HTTPS game URL.", true);
     if (thumbnail_url && !validGameUrl(thumbnail_url)) return setGameFormMessage("The thumbnail URL must be HTTP or HTTPS.", true);
-    const {error} = await sb.from("games").update({title,description,thumbnail_url:thumbnail_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,updated_at:new Date().toISOString()}).eq("id",id).eq("creator_id",currentUser.id);
+    if (icon_url && !validGameUrl(icon_url)) return setGameFormMessage("The icon URL must be HTTP or HTTPS.", true);
+    $("submitGameButton").disabled=true;
+    setGameFormMessage("Saving changes…");
+    const {error} = await sb.from("games").update({title,description,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,updated_at:new Date().toISOString()}).eq("id",id).eq("creator_id",currentUser.id);
+    $("submitGameButton").disabled=false;
     if (error) return setGameFormMessage(error.message,true);
-    setGameFormMessage("Game updated.");
-    editingGameId = null;
-    resetGameEditor();
     $("gameUploader").classList.add("hidden");
+    resetGameEditor();
     await loadGames();
+    const updated=allPublishedGames.find(g=>g.id===id);
+    if(updated)openGameDetails(id);
   }
 
   let currentGame = null;
@@ -1825,6 +1871,9 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
 
   $("openGameUploader")?.addEventListener("click", openGameUploader);
+    $("cancelGameUploader")?.addEventListener("click", closeGameUploader);
+    $("cancelGameUploaderButton")?.addEventListener("click", closeGameUploader);
+    $("gameUploaderBackdrop")?.addEventListener("click", closeGameUploader);
   $("cancelGameUploader")?.addEventListener("click", closeGameUploader);
   $("gameForm")?.addEventListener("submit", submitGame);
   $("gameSearch")?.addEventListener("input", e => renderGames(e.target.value));
