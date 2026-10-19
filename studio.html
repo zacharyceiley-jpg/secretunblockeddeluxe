@@ -95,7 +95,7 @@ let publishSupabaseClient=null;
 function publishMessage(message,isError=false){const el=$('publishStatus');el.textContent=message;el.style.color=isError?'#ff9d9d':'var(--muted)';}
 function fileMime(name){const ext=(name.match(/\.([^.]+)$/)||[])[1]?.toLowerCase();return ({html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',json:'application/json',txt:'text/plain',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',mp3:'audio/mpeg',ogg:'audio/ogg',wav:'audio/wav',mp4:'video/mp4',webm:'video/webm',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',otf:'font/otf'})[ext]||'application/octet-stream';}
 function projectFileBlob(name,value){if(textExt.test(name))return new Blob([String(value)],{type:fileMime(name)});const raw=atob(String(value));const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new Blob([bytes],{type:fileMime(name)});}
-async function selectedGenres(id){const values=[...$(id).selectedOptions].map(o=>o.value);if(values.length>10)throw new Error('Choose no more than 10 genres.');return values}
+function selectedGenres(id){const values=[...$(id).selectedOptions].map(o=>o.value);if(values.length>10)throw new Error('Choose no more than 10 genres.');return values}
 function publishStudioGame(){
  syncEditor();
  if(!window.supabase?.createClient)return publishMessage('Supabase did not load. Refresh Studio and try again.',true);
