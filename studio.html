@@ -267,7 +267,7 @@ $('submitNewUrlGame').onclick=async()=>{
  const btn=$('submitNewUrlGame'),status=$('addUrlGameStatus');btn.disabled=true;status.textContent='Submitting URL game…';
  try{
   if(!window.supabase?.createClient)throw new Error('Supabase did not load. Refresh Studio.');
-  if(!urlGamesClient)urlGamesClient=window.supabase.createClient('https://hhszfqpojhmwbmuhdmis.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk');
+  if(!urlGamesClient)urlGamesClient=getStudioSupabaseClient();
   const {data:sessionData,error:sessionError}=await urlGamesClient.auth.getSession();if(sessionError)throw sessionError;
   const user=sessionData?.session?.user;if(!user)throw new Error('Sign in on the main site first, then return to Studio.');
   const title=$('newUrlTitle').value.trim(),description=$('newUrlDescription').value.trim(),game_url=$('newUrlGameUrl').value.trim(),thumbnail_url=$('newUrlThumbnail').value.trim(),icon_url=$('newUrlIcon').value.trim();
