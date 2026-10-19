@@ -1158,17 +1158,22 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
   let deluxePlayTrackingId = null;
   let deluxePlayTrackingStarted = 0;
-  function startDeluxePlayTracking(id) {
-    if (deluxePlayTrackingId && deluxePlayTrackingStarted) {
-      const elapsed = Math.floor((Date.now()-deluxePlayTrackingStarted)/1000);
-      if (elapsed > 0) {
-        const values = getDeluxePlaytime(); values[deluxePlayTrackingId] = Number(values[deluxePlayTrackingId] || 0) + elapsed;
-        try { localStorage.setItem(DELUXE_PLAYTIME_KEY, JSON.stringify(values)); } catch {}
-      }
+  function flushDeluxePlayTracking() {
+    if (!deluxePlayTrackingId || !deluxePlayTrackingStarted) return;
+    const elapsed = Math.floor((Date.now()-deluxePlayTrackingStarted)/1000);
+    if (elapsed > 0) {
+      const values = getDeluxePlaytime();
+      values[deluxePlayTrackingId] = Number(values[deluxePlayTrackingId] || 0) + elapsed;
+      try { localStorage.setItem(DELUXE_PLAYTIME_KEY, JSON.stringify(values)); } catch {}
+      deluxePlayTrackingStarted = Date.now();
     }
+  }
+  function startDeluxePlayTracking(id) {
+    if (deluxePlayTrackingId && deluxePlayTrackingStarted) flushDeluxePlayTracking();
     deluxePlayTrackingId = id; deluxePlayTrackingStarted = Date.now();
   }
   function showDeluxePlaytime() {
+    flushDeluxePlayTracking();
     const values = getDeluxePlaytime();
     const rows = [...allPublishedGames].sort((a,b)=>getDeluxePlaySeconds(b.id)-getDeluxePlaySeconds(a.id));
     $("gameDetailRoot").innerHTML = `<div class="page-title"><button class="secondary" onclick="showPage('games')">← Back to games</button><p class="eyebrow" style="margin-top:18px">YOUR ACTIVITY</p><h1>Playtime</h1><p>Playtime is tracked on this browser.</p></div><div class="admin-list">${rows.map(g=>`<div class="admin-row"><b>${escapeHtml(g.title || "Untitled Game")}</b><span style="float:right">${formatDeluxeTime(values[g.id] || 0)}</span></div>`).join("") || '<p>No games to show yet.</p>'}</div>`;
@@ -1321,6 +1326,7 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
 
   function leaveGame(){
+    flushDeluxePlayTracking();
     clearInterval(gameChatRefreshTimer);
     if (sfothPlayTimer) clearTimeout(sfothPlayTimer);
     sfothPlayTimer = null;
