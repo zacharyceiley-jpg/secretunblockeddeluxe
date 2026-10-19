@@ -79,36 +79,36 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     .game-form input,.game-form textarea{display:block;width:100%;margin-top:7px;padding:12px 13px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);outline:none;resize:vertical}
     .game-form input:focus,.game-form textarea:focus{border-color:var(--accent)}
     /* Deluxe game discovery layout */
-    .game-card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
-    .game-card:hover{border-color:#4b5260}
-    .game-card .game-thumb{width:100%;aspect-ratio:1/1;height:auto;background:linear-gradient(135deg,#252b38,#151922);display:grid;place-items:center;font-size:48px;overflow:hidden;position:relative}
-    .game-card .game-thumb img{width:100%;height:100%;object-fit:cover}
-    .game-card .game-card-body{position:absolute;inset:0;padding:15px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;background:linear-gradient(180deg,rgba(0,0,0,0) 22%,rgba(0,0,0,.88) 100%);opacity:0;transition:opacity .18s ease;color:#fff}
-    .game-card:hover .game-card-body,.game-card:focus-within .game-card-body{opacity:1}
-    .game-card .game-title{font-weight:800;font-size:17px;color:#fff}
-    .game-card .game-description,.game-card .game-meta{display:none}
-    .game-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
-    .game-card-actions button,.game-card-actions a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+    #gameGrid .game-card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+    #gameGrid .game-card:hover{border-color:#4b5260}
+    #gameGrid .game-card #gameGrid .game-thumb{width:100%;aspect-ratio:1/1;height:auto;background:linear-gradient(135deg,#252b38,#151922);display:grid;place-items:center;font-size:48px;overflow:hidden;position:relative}
+    #gameGrid .game-card #gameGrid .game-thumb img{width:100%;height:100%;object-fit:cover}
+    #gameGrid .game-card #gameGrid .game-card-body{position:absolute;inset:0;padding:15px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;background:linear-gradient(180deg,rgba(0,0,0,0) 22%,rgba(0,0,0,.88) 100%);opacity:0;transition:opacity .18s ease;color:#fff}
+    #gameGrid .game-card:hover #gameGrid .game-card-body,#gameGrid .game-card:focus-within #gameGrid .game-card-body{opacity:1}
+    #gameGrid .game-card #gameGrid .game-title{font-weight:800;font-size:17px;color:#fff}
+    #gameGrid .game-card #gameGrid .game-description,#gameGrid .game-card #gameGrid .game-meta{display:none}
+    #gameGrid #gameGrid .game-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+    #gameGrid #gameGrid .game-card-actions button,#gameGrid #gameGrid .game-card-actions a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
     .game-discovery-section{margin-top:30px}
     .game-discovery-section .section-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
     .game-discovery-section .section-heading h2{margin:0}
     .game-discovery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:13px}
-    .game-discovery-grid .game-card{cursor:pointer}
+    .game-discovery-grid #gameGrid .game-card{cursor:pointer}
     .game-detail-layout{display:grid;grid-template-columns:minmax(180px,300px) minmax(0,1fr);gap:24px;align-items:start}
     .game-detail-thumbnail{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
     .game-detail-description{color:var(--muted);line-height:1.65;white-space:pre-wrap}
     .game-tag{display:inline-flex;padding:5px 9px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted);margin:3px 5px 3px 0}
     @media(max-width:620px){.game-detail-layout{grid-template-columns:1fr}.game-detail-thumbnail{max-width:240px}.game-discovery-grid{grid-template-columns:repeat(auto-fill,minmax(125px,1fr))}}
 
-    .game-card:hover{border-color:#4b5260}
-    .game-thumb{width:100%;height:150px;background:linear-gradient(135deg,#252b38,#151922);display:grid;place-items:center;font-size:48px;overflow:hidden}
-    .game-thumb img{width:100%;height:100%;object-fit:cover}
-    .game-card-body{padding:17px;display:flex;flex-direction:column;gap:8px;flex:1}
-    .game-card .game-title{font-weight:800;font-size:18px}
-    .game-card .game-description{color:var(--muted);line-height:1.5;min-height:42px}
-    .game-card .game-meta{font-size:12px;color:var(--muted)}
-    .game-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
-    .game-card-actions button,.game-card-actions a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+    #gameGrid .game-card:hover{border-color:#4b5260}
+    #gameGrid .game-thumb{width:100%;height:150px;background:linear-gradient(135deg,#252b38,#151922);display:grid;place-items:center;font-size:48px;overflow:hidden}
+    #gameGrid .game-thumb img{width:100%;height:100%;object-fit:cover}
+    #gameGrid .game-card-body{padding:17px;display:flex;flex-direction:column;gap:8px;flex:1}
+    #gameGrid .game-card #gameGrid .game-title{font-weight:800;font-size:18px}
+    #gameGrid .game-card #gameGrid .game-description{color:var(--muted);line-height:1.5;min-height:42px}
+    #gameGrid .game-card #gameGrid .game-meta{font-size:12px;color:var(--muted)}
+    #gameGrid #gameGrid .game-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:8px}
+    #gameGrid #gameGrid .game-card-actions button,#gameGrid #gameGrid .game-card-actions a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
     .admin-status{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted)}
     .admin-row{padding:12px 0;border-bottom:1px solid var(--line)}
     .admin-row:last-child{border-bottom:0}
