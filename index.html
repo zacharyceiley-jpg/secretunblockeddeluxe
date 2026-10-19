@@ -613,7 +613,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (name === "users") loadUsers();
     if (name === "settings") renderExclusiveThemeSettings();
     if (name === "inbox" && !currentUser) openAuth("login");
-    if (name === "games") loadGames();
+    if (name === "games") loadGames();\n    if (name === "gameDetail") {}
     if (name === "admin") loadAdminPanel();
     if (name === "inbox") loadInbox();
   }
@@ -1002,37 +1002,41 @@ body.light-mode .pilot-welcome{color:#626d80}
     }
   }
 
-  function renderGameCard(g, owner=false){
-    const title = escapeHtml(g.title || "Untitled Game");
-    const description = escapeHtml(g.description || "No description.");
-    const creator = escapeHtml(g.profiles?.username || "Unknown creator");
-    const thumb = g.thumbnail_url && validGameUrl(g.thumbnail_url)
-      ? `<img src="${escapeHtml(g.thumbnail_url)}" alt="">` : "🎮";
-    return `
-      <article class="game-card">
-        <div class="game-thumb">${thumb}</div>
-        <div class="game-card-body">
-          <div class="game-title">${title}</div>
-          <div class="game-description">${description}</div>
-          <div class="game-meta">${owner ? `Status: ${escapeHtml(g.status || "pending")} · Chat: ${g.chat_enabled ? "On" : "Off"}` : `Created by ${creator} · Chat: ${g.chat_enabled ? "On" : "Off"}`}</div>
-          <div class="game-card-actions">
-            ${!owner ? `<button class="primary" onclick="openGame('${g.id}')">▶ Play</button>` : `<button class="primary" onclick="openGame('${g.id}')">▶ Preview</button><button class="secondary" onclick="editMyGame('${g.id}')">Edit</button><button class="danger-button" onclick="deleteMyGame('${g.id}')">Delete</button>`}
-          </div>
-        </div>
-      </article>`;
+  const GAME_GENRES=["Action","Adventure","Arcade","Board","Casual","Clicker","Fighting","Horror","Idle","Multiplayer","Obby","Platformer","Puzzle","Racing","RPG","Sandbox","Shooter","Simulation","Sports","Strategy","Survival","Tower Defense","Tycoon"];
+  let activeGenreFilters=new Set();
+  function gameTags(g){return Array.isArray(g.tags)?g.tags.filter(t=>GAME_GENRES.includes(t)).slice(0,10):[]}
+  function gameIcon(g){return g.thumbnail_url&&validGameUrl(g.thumbnail_url)?'<img src="'+escapeHtml(g.thumbnail_url)+'" alt="" loading="lazy">':"🎮"}
+  function renderGameCard(g){
+    const title=escapeHtml(g.title||"Untitled Game");
+    return '<article class="game-card" role="button" tabindex="0" aria-label="View '+title+'" onclick="openGameDetails(\''+g.id+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGameDetails(\''+g.id+'\')}"><div class="game-thumb">'+gameIcon(g)+'</div><div class="game-card-body"><div class="game-title">'+title+'</div></div></article>';
   }
-
+  function renderDiscoveryCard(g){return '<div class="discovery-card" onclick="openGameDetails(\''+g.id+'\')" role="button" tabindex="0"><article class="game-card"><div class="game-thumb">'+gameIcon(g)+'</div><div class="game-card-body"><div class="game-title">'+escapeHtml(g.title||"Untitled Game")+'</div></div></article><div class="discovery-label">'+escapeHtml(g.title||"Untitled Game")+'</div></div>'}
+  function renderGenreFilters(){
+    const available=[...new Set(allPublishedGames.flatMap(gameTags))].sort(),options=available.length?available:GAME_GENRES;
+    const html=options.map(tag=>'<button class="genre-chip '+(activeGenreFilters.has(tag)?"active":"")+'" onclick="toggleGenreFilter(\''+tag+'\')">'+escapeHtml(tag)+'</button>').join("");
+    $("allGameFilters").innerHTML=html;$("recommendedTags").innerHTML=html;
+  }
+  function toggleGenreFilter(tag){if(activeGenreFilters.has(tag))activeGenreFilters.delete(tag);else activeGenreFilters.add(tag);renderGames($("gameSearch")?.value||"")}
+  function renderDiscoverySections(){
+    const filtered=allPublishedGames.filter(g=>!activeGenreFilters.size||gameTags(g).some(t=>activeGenreFilters.has(t)));
+    $("recommendedGrid").innerHTML=filtered.slice().sort((a,b)=>gameTags(b).length-gameTags(a).length).slice(0,8).map(renderDiscoveryCard).join("");
+    $("trendingGrid").innerHTML=filtered.slice(0,8).map(renderDiscoveryCard).join("");
+    const recent=Object.entries(getLocalPlaytime()).sort((a,b)=>(b[1].lastPlayed||0)-(a[1].lastPlayed||0)).slice(0,8).map(([id])=>allPublishedGames.find(g=>g.id===id)).filter(Boolean);
+    $("continueSection").classList.toggle("hidden",recent.length===0);$("continueGrid").innerHTML=recent.map(renderDiscoveryCard).join("");
+    renderGenreFilters();
+  }
+  function getLocalPlaytime(){try{return JSON.parse(localStorage.getItem("deluxeGamePlaytimeV1")||"{}")}catch{return {}}}
   function renderGames(filter=""){
-    const q = filter.trim().toLowerCase();
-    const publicGames = allPublishedGames.filter(g =>
-      !q ||
-      String(g.title || "").toLowerCase().includes(q) ||
-      String(g.description || "").toLowerCase().includes(q) ||
-      String(g.profiles?.username || "").toLowerCase().includes(q)
-    );
-
-    $("gameGrid").innerHTML = publicGames.map(g => renderGameCard(g)).join("") ||
-      '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
+    const q=filter.trim().toLowerCase(),games=allPublishedGames.filter(g=>(!q||String(g.title||"").toLowerCase().includes(q)||String(g.description||"").toLowerCase().includes(q)||String(g.profiles?.username||"").toLowerCase().includes(q)||gameTags(g).some(t=>t.toLowerCase().includes(q)))&&(!activeGenreFilters.size||gameTags(g).some(t=>activeGenreFilters.has(t))));
+    $("gameGrid").innerHTML=games.map(renderGameCard).join("")||'<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search or clear the genre filters.</p></div>';
+    renderDiscoverySections();
+  }
+  function openGameDetails(id){
+    const g=allPublishedGames.find(item=>item.id===id);if(!g)return openGame(id);
+    const art=g.thumbnail_url&&validGameUrl(g.thumbnail_url)?'<img class="game-detail-art" src="'+escapeHtml(g.thumbnail_url)+'" alt="'+escapeHtml(g.title||"Game thumbnail")+'">':'<div class="game-detail-art"></div>';
+    const tags=gameTags(g).map(t=>'<span>'+escapeHtml(t)+'</span>').join("");
+    $("gameDetailRoot").innerHTML='<button class="secondary" onclick="showPage(\'games\')">← Back to games</button><div class="game-detail-hero">'+art+'<div class="game-detail-copy"><p class="eyebrow">GAME DETAILS</p><h1>'+escapeHtml(g.title||"Untitled Game")+'</h1><p>'+escapeHtml(g.description||"No description provided yet.")+'</p><div class="game-detail-tags">'+tags+'<span>Age: '+escapeHtml(g.age_recommendation||"Everyone")+'</span></div><p class="small-note">Created by '+escapeHtml(g.profiles?.username||"Unknown creator")+'</p><button class="primary game-detail-play" onclick="openGame(\''+g.id+'\')">▶ Play</button></div></div>';
+    showPage("gameDetail");
   }
 
   async function loadGames(){
@@ -1040,7 +1044,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
 
     const publicResult = await sb.from("games")
-      .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)")
+      .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)")
       .eq("status","published")
       .order("created_at",{ascending:false});
 
