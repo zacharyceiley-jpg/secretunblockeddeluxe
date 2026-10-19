@@ -1056,6 +1056,7 @@ body.light-mode .pilot-welcome{color:#626d80}
 
     allPublishedGames = publicResult.data || [];
     renderGames($("gameSearch")?.value || "");
+    await loadPlaytime();
   }
 
   function openGameUploader(){
@@ -1150,6 +1151,30 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
 
   let currentGame = null;
+  let playtimeRows=[];
+  let playtimeTimer=null;
+  function playtimeTotals(){const totals={};playtimeRows.forEach(r=>totals[r.game_id]=(totals[r.game_id]||0)+(Number(r.seconds)||0));const local=getLocalPlaytime();Object.entries(local).forEach(([id,v])=>totals[id]=Math.max(totals[id]||0,Number(v.seconds)||0));return totals}
+  function formatPlaytime(seconds){seconds=Math.max(0,Math.floor(Number(seconds)||0));if(seconds<60)return seconds+" sec";const m=Math.floor(seconds/60);return m<60?m+" min":Math.floor(m/60)+" hr"+(m%60?" "+m%60+" min":"")}
+  async function loadPlaytime(){if(sb){const {data,error}=await sb.from("game_playtime").select("game_id,user_id,seconds,updated_at");if(!error)playtimeRows=data||[];else console.warn("Playtime stats unavailable:",error.message)}renderDiscoverySections()}
+  async function trackCurrentGameTime(){
+    if(!currentGame||document.hidden)return;
+    const game=currentGame,local=getLocalPlaytime(),entry=local[game.id]||{seconds:0,lastPlayed:0};
+    entry.seconds=(Number(entry.seconds)||0)+15;entry.lastPlayed=Date.now();entry.title=game.title;local[game.id]=entry;
+    try{localStorage.setItem("deluxeGamePlaytimeV1",JSON.stringify(local))}catch{}
+    if(sb&&currentUser){
+      const old=playtimeRows.find(r=>r.game_id===game.id&&r.user_id===currentUser.id),seconds=(Number(old?.seconds)||0)+15;
+      const {error}=await sb.from("game_playtime").upsert({user_id:currentUser.id,game_id:game.id,seconds,updated_at:new Date().toISOString()},{onConflict:"user_id,game_id"});
+      if(!error){if(old)old.seconds=seconds;else playtimeRows.push({user_id:currentUser.id,game_id:game.id,seconds})}
+    }
+    renderDiscoverySections();
+  }
+  function startGamePlaytime(){clearInterval(playtimeTimer);playtimeTimer=setInterval(trackCurrentGameTime,15000)}
+  function showPlaytimePanel(show){
+    $("playtimePanel").classList.toggle("hidden",!show);$("publicGamesSection").classList.toggle("hidden",show);
+    ["continueSection","recommendedSection","trendingSection"].forEach(id=>$(id).classList.toggle("hidden",show));
+    if(show){const totals=playtimeTotals(),local=getLocalPlaytime(),rows=allPublishedGames.map(g=>({g,seconds:totals[g.id]||0,lastPlayed:local[g.id]?.lastPlayed||0})).sort((a,b)=>b.seconds-a.seconds);$("playtimeSummary").textContent=formatPlaytime(rows.reduce((n,r)=>n+r.seconds,0))+" total tracked across "+rows.filter(r=>r.seconds>0).length+" games.";$("playtimeList").innerHTML=rows.map(({g,seconds,lastPlayed})=>'<div class="playtime-row">'+gameIcon(g)+'<div class="grow"><b>'+escapeHtml(g.title)+'</b><span>'+(lastPlayed?"Last played "+new Date(lastPlayed).toLocaleDateString():"Not played on this device")+'</span></div><strong>'+formatPlaytime(seconds)+'</strong></div>').join("")}
+  }
+
   let editingGameId = null;
   let gameChatRefreshTimer = null;
   let unreadMessageCount = 0;
@@ -1178,11 +1203,13 @@ body.light-mode .pilot-welcome{color:#626d80}
     }
     showPage("game");
     renderGamePage();
+    startGamePlaytime();
     if (data.chat_enabled) await loadGameChat();
   }
 
   function leaveGame(){
     clearInterval(gameChatRefreshTimer);
+    clearInterval(playtimeTimer);
     if (sfothPlayTimer) clearTimeout(sfothPlayTimer);
     sfothPlayTimer = null;
     currentGame = null;
@@ -1678,6 +1705,8 @@ body.light-mode .pilot-welcome{color:#626d80}
   $("cancelGameUploader")?.addEventListener("click", closeGameUploader);
   $("gameForm")?.addEventListener("submit", submitGame);
   $("gameSearch")?.addEventListener("input", e => renderGames(e.target.value));
+  $("openPlaytimeButton")?.addEventListener("click",()=>showPlaytimePanel(true));
+  $("closePlaytimeButton")?.addEventListener("click",()=>showPlaytimePanel(false));
 
   document.addEventListener("click", e => {
     const pageTarget = e.target.closest("[data-page]");
