@@ -126,6 +126,23 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     #sitePilotPanel.hidden{display:none!important}.pilot-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:linear-gradient(120deg,#26204c,#172c49);border-bottom:1px solid #34394a}.pilot-head strong{font-size:16px}.pilot-sub{font-size:12px;color:#c5c8e6;margin-top:3px}.pilot-head-actions{display:flex;gap:7px}.pilot-icon{border:1px solid #ffffff30;background:#ffffff12;color:white;border-radius:9px;padding:7px 9px;cursor:pointer}.pilot-tools{display:flex;gap:7px;padding:9px 12px;border-bottom:1px solid #292d39;flex-wrap:wrap}.pilot-tools button{border:1px solid #34394a;background:#1a1e28;color:#e7e9f4;border-radius:8px;padding:7px 9px;cursor:pointer;font-size:12px}.pilot-tools button.active{border-color:#8b7cff;color:#c9c2ff}.pilot-messages{padding:13px;overflow:auto;flex:1;display:flex;flex-direction:column;gap:11px}.pilot-msg{max-width:92%;padding:10px 12px;border-radius:13px;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.45;font-size:14px}.pilot-msg.assistant{align-self:flex-start;background:#202532;border:1px solid #34394a}.pilot-msg.user{align-self:flex-end;background:#5144ad;color:white}.pilot-msg small{display:block;opacity:.65;font-size:10px;margin-bottom:4px}.pilot-compose{display:flex;gap:8px;padding:12px;border-top:1px solid #292d39}.pilot-compose input{min-width:0;flex:1;background:#090b10;border:1px solid #363b4b;border-radius:10px;color:#fff;padding:11px;outline:none}.pilot-compose button{border:0;background:#7563ff;color:#fff;border-radius:10px;padding:0 14px;font-weight:800;cursor:pointer}.pilot-compose button:disabled{opacity:.5;cursor:wait}.pilot-status{font-size:11px;color:#a9aec1;padding:0 13px 9px}.pilot-welcome{color:#bfc4d5;font-size:13px;line-height:1.5;padding:8px 2px}
     @media(max-width:520px){#sitePilotLauncher{right:12px;bottom:12px}#sitePilotPanel{right:8px;bottom:68px;width:calc(100vw - 16px);height:min(620px,calc(100vh - 85px))}
 }
+
+/* Deluxe Light Mode */
+body.light-mode{--bg:#f4f6fb;--panel:#ffffff;--panel2:#edf0f7;--line:#d9deea;--text:#182033;--muted:#626d80;--accent:#6550d9;--accent2:#5946c4;background-color:var(--bg);background-image:radial-gradient(circle at 80% -10%,rgba(124,92,255,.10),transparent 32%),radial-gradient(circle at 10% 30%,rgba(61,118,255,.06),transparent 28%);color:var(--text)}
+body.light-mode .topbar{background:rgba(255,255,255,.9)}
+body.light-mode .hero-card{background:linear-gradient(145deg,#fff,#f1f3fa);box-shadow:0 25px 80px rgba(28,38,65,.09)}
+body.light-mode .empty-state{border-color:#d1d7e4;background:rgba(255,255,255,.7)}
+body.light-mode .avatar{background:linear-gradient(135deg,#e3e7f1,#cfd6e5)}
+body.light-mode .secondary:hover,body.light-mode .account-button:hover,body.light-mode .icon-button:hover{background:#e2e6f0}
+body.light-mode .modal-backdrop{background:rgba(24,32,51,.38)}
+body.light-mode .modal-card{background:#fff;box-shadow:0 30px 100px rgba(28,38,65,.22)}
+body.light-mode .auth-tabs{background:#f0f2f8}
+body.light-mode .auth-tab.active{background:#fff;color:var(--text)}
+body.light-mode .auth-form input,body.light-mode .game-search,body.light-mode .game-form input,body.light-mode .game-form textarea{background:#f8f9fc;color:var(--text);border-color:var(--line)}
+body.light-mode .game-thumb{background:linear-gradient(135deg,#e4e8f2,#f5f6fa)}
+body.light-mode .modal-close{color:var(--muted)}
+body.light-mode .pilot-compose input{background:#f8f9fc!important;color:#182033!important;border-color:#d9deea!important}
+body.light-mode .pilot-welcome{color:#626d80}
 </style>
 </head>
 <body>
@@ -198,6 +215,16 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
         <p class="eyebrow">PERSONALISATION</p><h1>Settings</h1>
         <p>Manage your account-synced exclusive themes.</p>
       </div>
+      <div class="section-heading" style="margin-top:0"><div><p class="eyebrow">APPEARANCE</p><h2>Display mode</h2></div></div>
+      <article class="exclusive-theme-card" style="margin-bottom:28px">
+        <div class="exclusive-theme-preview" style="display:grid;place-items:center;background:linear-gradient(135deg,#f5f7fc,#e4e9f5);color:#6550d9;font-size:48px">☀️</div>
+        <div class="exclusive-theme-body">
+          <div id="lightModeStatus" class="theme-status">Light mode is off</div>
+          <h3>Light Mode</h3>
+          <p>Give Deluxe a bright, clean look with light backgrounds and readable dark text. Your choice is saved on this device.</p>
+          <div class="theme-actions"><button id="lightModeToggle" class="primary" type="button" aria-pressed="false">Enable Light Mode</button></div>
+        </div>
+      </article>
       <div class="section-heading"><div><p class="eyebrow">EXCLUSIVE THEMES</p><h2>Your collection</h2></div></div>
       <p class="settings-note">Exclusive themes are saved to your Deluxe account, so unlocks and your selected theme follow you when you sign in on another device. SFOTH is earned by playing SFOTH IV on Deluxe for at least 60 seconds.</p>
       <div class="settings-grid">
@@ -447,6 +474,21 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   };
   let sfothPlayTimer = null;
   let pendingSfothUnlock = false;
+
+
+  const LIGHT_MODE_KEY = "deluxeLightMode";
+  function applyLightMode(enabled){
+    document.body.classList.toggle("light-mode", !!enabled);
+    try { localStorage.setItem(LIGHT_MODE_KEY, enabled ? "true" : "false"); } catch (error) { console.warn("Could not save display preference:", error); }
+    const button = $("lightModeToggle");
+    const status = $("lightModeStatus");
+    if (button) { button.textContent = enabled ? "Switch to Dark Mode" : "Enable Light Mode"; button.setAttribute("aria-pressed", String(!!enabled)); }
+    if (status) { status.textContent = enabled ? "☀️ Light mode is active" : "🌙 Dark mode is active"; status.classList.toggle("unlocked", !!enabled); }
+  }
+  let savedLightMode = false;
+  try { savedLightMode = localStorage.getItem(LIGHT_MODE_KEY) === "true"; } catch (error) { /* Use dark mode if storage is unavailable. */ }
+  applyLightMode(savedLightMode);
+  $("lightModeToggle")?.addEventListener("click", () => applyLightMode(!document.body.classList.contains("light-mode")));
 
   function getUnlockedExclusiveThemes(){
     return Array.isArray(currentProfile?.unlocked_themes) ? currentProfile.unlocked_themes : [];
