@@ -92,7 +92,13 @@ function runPreview(){
 }
 
 const PUBLISH_SUPABASE_URL='https://hhszfqpojhmwbmuhdmis.supabase.co';
+let studioSharedSupabaseClient=null;
 let publishSupabaseClient=null;
+function getStudioSupabaseClient(){
+ if(!window.supabase?.createClient)throw new Error('Supabase client failed to load. Refresh Studio.');
+ if(!studioSharedSupabaseClient)studioSharedSupabaseClient=window.supabase.createClient(PUBLISH_SUPABASE_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'sud-studio-auth'}});
+ return studioSharedSupabaseClient;
+}
 function publishMessage(message,isError=false){const el=$('publishStatus');el.textContent=message;el.style.color=isError?'#ff9d9d':'var(--muted)';}
 function fileMime(name){const ext=(name.match(/\.([^.]+)$/)||[])[1]?.toLowerCase();return ({html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',json:'application/json',txt:'text/plain',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',mp3:'audio/mpeg',ogg:'audio/ogg',wav:'audio/wav',mp4:'video/mp4',webm:'video/webm',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',otf:'font/otf'})[ext]||'application/octet-stream';}
 function projectFileBlob(name,value){if(textExt.test(name))return new Blob([String(value)],{type:fileMime(name)});const raw=atob(String(value));const bytes=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)bytes[i]=raw.charCodeAt(i);return new Blob([bytes],{type:fileMime(name)});}
@@ -112,7 +118,7 @@ function publishStudioGame(){
  if(total>12*1024*1024)return publishMessage('Project text is larger than 12 MB. Reduce the project size and try again.',true);
  const btn=$('publishGameBtn');btn.disabled=true;
  try{
-  if(!publishSupabaseClient)publishSupabaseClient=window.supabase.createClient(PUBLISH_SUPABASE_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk');
+  if(!publishSupabaseClient)publishSupabaseClient=getStudioSupabaseClient();
   const {data:sessionData,error:sessionError}=await publishSupabaseClient.auth.getSession();
   if(sessionError)throw sessionError;
   const user=sessionData?.session?.user;
@@ -198,7 +204,7 @@ $('runDevelopPilot').onclick=async()=>{
  setDevelopStatus('Develop Pilot is reading '+codeFiles.length+' code file(s) and planning edits…');
  try{
   if(!window.supabase?.createClient)throw new Error('Supabase client did not load. Refresh Studio and try again.');
-  if(!developSupabaseClient)developSupabaseClient=window.supabase.createClient('https://hhszfqpojhmwbmuhdmis.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk');
+  if(!developSupabaseClient)developSupabaseClient=getStudioSupabaseClient();
   const sessionResult=await developSupabaseClient.auth.getSession();
   if(sessionResult.error)throw sessionResult.error;
   const session=sessionResult.data?.session;
@@ -241,7 +247,7 @@ async function loadMyUrlGames(){
  const btn=$('refreshUrlGames');btn.disabled=true;$('urlGamesList').innerHTML='';
  try{
   if(!window.supabase?.createClient)throw new Error('Supabase failed to load. Refresh Studio.');
-  if(!urlGamesClient)urlGamesClient=window.supabase.createClient('https://hhszfqpojhmwbmuhdmis.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk');
+  if(!urlGamesClient)urlGamesClient=getStudioSupabaseClient();
   const {data:session,error:sessionError}=await urlGamesClient.auth.getSession();if(sessionError)throw sessionError;
   const user=session?.session?.user;if(!user)throw new Error('Sign in on the main site first, then return here.');
   const {data,error}=await urlGamesClient.from('games').select('id,title,description,thumbnail_url,icon_url,game_url,status,chat_enabled,tags,age_recommendation,created_at').eq('creator_id',user.id).order('created_at',{ascending:false});
@@ -323,7 +329,7 @@ async function studioSignIn(){
  const btn=$('studioSignInBtn');btn.disabled=true;setStudioLoginMessage('Signing in…');
  try{
   if(!window.supabase?.createClient)throw new Error('Supabase client failed to load. Refresh Studio.');
-  const client=developSupabaseClient||window.supabase.createClient('https://hhszfqpojhmwbmuhdmis.supabase.co','eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk');
+  const client=developSupabaseClient||getStudioSupabaseClient();
   developSupabaseClient=client;
   const email=$('studioLoginEmail').value.trim(),password=$('studioLoginPassword').value;
   if(!email||!password)throw new Error('Enter your email and password.');
@@ -333,7 +339,13 @@ async function studioSignIn(){
   const user=data?.user||data?.session?.user;
   if(!user)throw new Error('Sign-in returned no user session. Try again.');
   setStudioLoginMessage('Signed in successfully.');
-  await updateStudioAuthStatus(true);
+  const status=$('authStatus');
+  status.textContent='Signed in: '+(user.email||'account');
+  status.style.borderColor='#347a55';
+  $('studioSignInBtn').hidden=true;$('studioSignOutBtn').hidden=false;
+  $('studioLoginEmail').disabled=true;$('studioLoginPassword').disabled=true;
+  $('refreshUrlGames').disabled=false;
+  urlGamesClient=client;publishSupabaseClient=client;
  }catch(e){setStudioLoginMessage(e?.message||'Could not sign in.',true)}
  finally{btn.disabled=false}
 }
@@ -352,10 +364,7 @@ async function updateStudioAuthStatus(manualSignIn=false){
  if(!el)return;
  try{
   if(!window.supabase?.createClient){el.textContent='Sign-in unavailable — refresh Studio';return}
-  if(!developSupabaseClient)developSupabaseClient=window.supabase.createClient(
-   "https://hhszfqpojhmwbmuhdmis.supabase.co",
-   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk'
-  );
+  if(!developSupabaseClient)developSupabaseClient=getStudioSupabaseClient();
   const paintAuth=u=>{
    el.textContent=u?'Signed in: '+(u.email||'account'):'Not signed in — sign in below';
    el.title=u?'Signed in to Secret Unblocked Deluxe':'Sign in using the form below';
