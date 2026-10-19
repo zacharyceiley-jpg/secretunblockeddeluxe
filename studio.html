@@ -101,6 +101,8 @@ function publishStudioGame(){
  if(!window.supabase?.createClient)return publishMessage('Supabase did not load. Refresh Studio and try again.',true);
  if(!files.size)return publishMessage('Add your game files first.',true);
  const title=$('publishTitle').value.trim();
+ const iconUrl=$('publishIconUrl').value.trim();
+ if(iconUrl&&!/^https?:\/\//i.test(iconUrl))throw new Error('Icon URL must use HTTP or HTTPS.');
  if(!title)return publishMessage('Enter a game title.',true);
  const entry=htmlEntry();
  if(!entry)return publishMessage('Your project needs an HTML file. Name the main file index.html if possible.',true);
@@ -135,7 +137,7 @@ function publishStudioGame(){
    if(error)throw new Error('Game files uploaded, but thumbnail upload failed: '+error.message);
    thumbnailUrl=publishSupabaseClient.storage.from('game-assets').getPublicUrl(path).data.publicUrl;
   }
-  const iconUrl=$('publishIconUrl').value.trim();if(iconUrl&&!/^https?:\/\//i.test(iconUrl))throw new Error('Icon URL must use HTTP or HTTPS.');const {error:insertError}=await publishSupabaseClient.from('games').insert({id:gameId,creator_id:user.id,title,description:$('publishDescription').value.trim(),thumbnail_url:thumbnailUrl,icon_url:iconUrl||null,game_url:publicData.publicUrl,storage_path:root,status:'pending',chat_enabled:true,tags:selectedGenres('publishTags'),age_recommendation:$('publishAge').value});
+  const {error:insertError}=await publishSupabaseClient.from('games').insert({id:gameId,creator_id:user.id,title,description:$('publishDescription').value.trim(),thumbnail_url:thumbnailUrl,icon_url:iconUrl||null,game_url:publicData.publicUrl,storage_path:root,status:'pending',chat_enabled:true,tags:selectedGenres('publishTags'),age_recommendation:$('publishAge').value});
   if(insertError)throw new Error('Files uploaded, but game submission failed: '+insertError.message);
   publishMessage('Submitted successfully! Your game is uploaded and waiting for admin approval.');
  }catch(error){publishMessage(error?.message||'Publishing failed. Please try again.',true);}
@@ -262,7 +264,7 @@ $('saveUrlGame').onclick=async()=>{
   if(!title)throw new Error('Enter a title.');
   const valid=v=>{try{const u=new URL(v);return ['http:','https:'].includes(u.protocol)}catch{return false}};
   if(!valid(game_url))throw new Error('Enter a valid HTTP or HTTPS game URL.');
-  if(thumbnail_url&&!valid(thumbnail_url))throw new Error('Thumbnail URL must use HTTP or HTTPS.');
+  if(thumbnail_url&&!valid(thumbnail_url))throw new Error('Thumbnail URL must use HTTP or HTTPS.');if(icon_url&&!valid(icon_url))throw new Error('Icon URL must use HTTP or HTTPS.');
   const {error}=await urlGamesClient.from('games').update({title,description,game_url,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,chat_enabled:$('urlEditChat').checked,tags:selectedGenres('urlEditTags'),age_recommendation:$('urlEditAge').value,updated_at:new Date().toISOString()}).eq('id',$('urlEditId').value).eq('creator_id',user.id);
   if(error)throw error;
   $('urlGameEditForm').style.display='none';urlGamesMessage('Game listing saved.');await loadMyUrlGames();
