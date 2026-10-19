@@ -2051,8 +2051,10 @@ const PUBLISH_SUPABASE_URL='https://hhszfqpojhmwbmuhdmis.supabase.co';
 let studioSharedSupabaseClient=null;
 let publishSupabaseClient=null;
 function getStudioSupabaseClient(){
- if(!window.supabase?.createClient)throw new Error('Supabase client failed to load. Refresh Studio.');
- if(!studioSharedSupabaseClient)studioSharedSupabaseClient=window.supabase.createClient(PUBLISH_SUPABASE_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:'sud-studio-auth'}});
+ // Reuse the main Deluxe client so Studio reads the exact same signed-in session.
+ if(typeof sb!=='undefined'&&sb){studioSharedSupabaseClient=sb;return sb;}
+ if(!window.supabase?.createClient)throw new Error('Supabase client failed to load. Refresh the page.');
+ if(!studioSharedSupabaseClient)studioSharedSupabaseClient=window.supabase.createClient(PUBLISH_SUPABASE_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc2pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk',{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
  return studioSharedSupabaseClient;
 }
 function publishMessage(message,isError=false){const el=$('publishStatus');el.textContent=message;el.style.color=isError?'#ff9d9d':'var(--muted)';}
@@ -2315,36 +2317,28 @@ $('studioSignOutBtn').onclick=async()=>{
  catch(e){setStudioLoginMessage(e?.message||'Could not sign out.',true)}
  finally{btn.disabled=false}
 };
-async function updateStudioAuthStatus(manualSignIn=false){
+async function updateStudioAuthStatus(){
  const el=document.getElementById('authStatus');
  if(!el)return;
  try{
-  if(!window.supabase?.createClient){el.textContent='Sign-in unavailable — refresh Studio';return}
-  if(!developSupabaseClient)developSupabaseClient=getStudioSupabaseClient();
+  if(!window.supabase?.createClient){el.textContent='Sign-in unavailable — refresh the page';return;}
+  const client=getStudioSupabaseClient();
+  developSupabaseClient=client;publishSupabaseClient=client;urlGamesClient=client;
   const paintAuth=u=>{
    el.textContent=u?'Signed in: '+(u.email||'account'):'Not signed in — sign in below';
    el.title=u?'Signed in to Secret Unblocked Deluxe':'Sign in using the form below';
    el.style.borderColor=u?'#347a55':'#765b35';
    $('studioSignInBtn').hidden=!!u;$('studioSignOutBtn').hidden=!u;
    $('studioLoginEmail').disabled=!!u;$('studioLoginPassword').disabled=!!u;
-   if(u)setStudioLoginMessage('Signed in as '+(u.email||'your account')+'.');
+   if(u){setStudioLoginMessage('Signed in as '+(u.email||'your account')+'.');$('refreshUrlGames').disabled=false;}
   };
-  // On page load, deliberately show the manual sign-in form instead of restoring
-  // the previous browser session into Studio's UI.
-  if(manualSignIn){
-   const {data,error}=await developSupabaseClient.auth.getSession();
-   if(error)throw error;
-   paintAuth(data?.session?.user||null);
-  }else{
-   paintAuth(null);
-  }
-  if(!window.__studioAuthListenerAttached){
-   window.__studioAuthListenerAttached=true;
-   developSupabaseClient.auth.onAuthStateChange((_event,session)=>{
-    if(_event==='SIGNED_IN'||_event==='SIGNED_OUT')paintAuth(session?.user||null);
-   });
-  }
- }catch(e){el.textContent='Sign-in unavailable';console.error('Studio auth status',e)}
+  const {data,error}=await client.auth.getSession();
+  if(error)throw error;
+  paintAuth(data?.session?.user||null);
+  client.auth.onAuthStateChange((_event,session)=>{
+   if(_event==='SIGNED_IN'||_event==='SIGNED_OUT'||_event==='INITIAL_SESSION')paintAuth(session?.user||null);
+  });
+ }catch(e){el.textContent='Sign-in unavailable';urlGamesMessage(e?.message||'Could not check sign-in status.',true);console.error('Studio auth status',e);}
 }
 
 })();
