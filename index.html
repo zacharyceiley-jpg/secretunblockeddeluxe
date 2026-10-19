@@ -284,8 +284,16 @@ body.light-mode .pilot-welcome{color:#626d80}
         <h1>Games</h1>
         <p>Browse and play published games. Create and manage your games in HTML Studio.</p>
       </div>
-      <div class="game-toolbar">
-        <input id="gameSearch" class="game-search" type="search" placeholder="Search games…">
+      <div class="game-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <input id="gameSearch" class="game-search" type="search" placeholder="Search games…" style="flex:1;min-width:190px">
+        <button class="secondary" type="button" onclick="showDeluxePlaytime()">⏱ Playtime</button>
+      </div>
+      <div class="game-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
+        <label for="preferredGenres" class="small-note">Recommend genres:</label>
+        <select id="preferredGenres" multiple size="1" aria-label="Preferred game genres" style="min-width:240px;max-width:100%;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px">
+          <option>Action</option><option>Adventure</option><option>Arcade</option><option>Board</option><option>Casual</option><option>Clicker</option><option>Fighting</option><option>Horror</option><option>Idle</option><option>Multiplayer</option><option>Obby</option><option>Platformer</option><option>Puzzle</option><option>Racing</option><option>RPG</option><option>Sandbox</option><option>Shooter</option><option>Simulation</option><option>Sports</option><option>Strategy</option><option>Survival</option><option>Tower Defense</option><option>Tycoon</option>
+        </select>
+        <button class="secondary" type="button" onclick="saveDeluxePreferredGenres()">Save genres</button>
       </div>
       <div id="publicGamesSection">
         <div class="section-heading"><div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div></div>
@@ -1106,6 +1114,18 @@ body.light-mode .pilot-welcome{color:#626d80}
     const tags = Array.isArray(g.genres) ? g.genres : (Array.isArray(g.tags) ? g.tags : []);
     return tags.some(tag => preferred.includes(String(tag)));
   }
+  function saveDeluxePreferredGenres() {
+    const select = $("preferredGenres");
+    if (!select) return;
+    const chosen = [...select.selectedOptions].map(option => option.value);
+    try { localStorage.setItem(DELUXE_GENRES_KEY, JSON.stringify(chosen)); } catch {}
+    renderGames($("gameSearch")?.value || "");
+  }
+  function restoreDeluxePreferredGenres() {
+    const preferred = readDeluxeStore(DELUXE_GENRES_KEY, []);
+    const select = $("preferredGenres");
+    if (select && Array.isArray(preferred)) [...select.options].forEach(option => { option.selected = preferred.includes(option.value); });
+  }
   function formatDeluxeTime(seconds) {
     seconds = Math.max(0, Math.floor(Number(seconds) || 0));
     const hours = Math.floor(seconds/3600), minutes = Math.floor((seconds%3600)/60);
@@ -1160,7 +1180,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
 
     const publicResult = await sb.from("games")
-      .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,profiles(username)")
+      .select("id,title,description,thumbnail_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)")
       .eq("status","published")
       .order("created_at",{ascending:false});
 
@@ -1171,6 +1191,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     }
 
     allPublishedGames = publicResult.data || [];
+    restoreDeluxePreferredGenres();
     renderGames($("gameSearch")?.value || "");
   }
 
