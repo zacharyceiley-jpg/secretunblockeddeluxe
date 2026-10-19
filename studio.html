@@ -13,7 +13,7 @@
 <main class="wrap">
 <section class="intro"><div><h1>HTML Game Studio</h1><div class="muted">Import a game, browse its files, edit code and test it before publishing.</div></div><div class="tools"><button id="newBtn">New HTML</button><button id="saveBtn" class="primary">Save project</button><button id="exportBtn">Export ZIP</button></div></section>
 <section class="projectbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px"><strong>Projects</strong><select id="projectSelect" class="field" style="width:auto;min-width:190px"><option value="">Unsaved workspace</option></select><button id="newProjectBtn">New project</button><button id="saveLocalBtn" class="primary">Save project</button><span class="notice">Switch between projects saved in this browser.</span></section>
-<section class="drop"><div><strong>Upload a game or project</strong><div class="notice">Choose .html, .css, .js, images or a .zip containing a complete project.</div></div><div class="tools"><input id="fileInput" type="file" multiple accept=".html,.htm,.css,.js,.json,.txt,.svg,.png,.jpg,.jpeg,.gif,.webp,.woff,.woff2,.zip" hidden><button id="uploadBtn" class="primary">Choose files</button></div></section>
+<section class="drop"><div style="flex:1;min-width:240px"><strong>Upload or import a game</strong><div class="notice">Upload .html files or a project ZIP, or import the page source from a public URL. URL imports need the host to allow browser access (CORS).</div><div class="importbar" style="margin:10px 0 0"><input id="importGameUrl" class="field" type="url" placeholder="https://example.com/game/"><button id="importGameUrlBtn" class="primary">Import URL into Studio</button></div><div id="importGameUrlStatus" class="notice" style="margin-top:6px">Import a public game page to start editing its HTML.</div></div><div class="tools"><input id="fileInput" type="file" multiple accept=".html,.htm,.css,.js,.json,.txt,.svg,.png,.jpg,.jpeg,.gif,.webp,.woff,.woff2,.zip" hidden><button id="uploadBtn" class="primary">Choose files</button></div></section>
 
 <div class="workspace">
 <section class="panel"><div class="panelhead">Project files <button id="renameBtn" title="Rename selected file">Rename</button></div><div id="fileList" class="files"><div class="empty">Upload files or create a new HTML file to begin.</div></div><div class="status" id="projectStatus">0 files</div></section>
@@ -146,6 +146,30 @@ function publishStudioGame(){
 $('publishGameBtn').onclick=publishStudioGame;
 
 $('uploadBtn').onclick=()=>$('fileInput').click();$('fileInput').onchange=e=>readFiles([...e.target.files]);
+async function importGameUrl(rawUrl){
+ const status=$('importGameUrlStatus'),btn=$('importGameUrlBtn');
+ let url;
+ try{url=new URL(String(rawUrl||'').trim());if(!['http:','https:'].includes(url.protocol))throw new Error('Only HTTP or HTTPS URLs are supported.');}
+ catch(e){status.textContent=e.message||'Enter a valid public game URL.';status.style.color='#ff9d9d';return;}
+ btn.disabled=true;status.style.color='var(--muted)';status.textContent='Fetching page source…';
+ try{
+  const response=await fetch(url.href,{method:'GET',mode:'cors',credentials:'omit'});
+  if(!response.ok)throw new Error('The website returned HTTP '+response.status+'.');
+  const contentType=response.headers.get('content-type')||'';
+  const source=await response.text();
+  if(!/html|text\/plain|application\/xhtml/i.test(contentType)&&!/<(?:!doctype\s+html|html|head|body)\b/i.test(source.slice(0,1500)))throw new Error('That URL did not return an HTML page. Try the game page URL or upload its project ZIP.');
+  if(!source.trim())throw new Error('The page source was empty.');
+  if(dirty&&files.size&&!confirm('Importing will replace the current unsaved workspace. Continue?')){status.textContent='Import cancelled.';return;}
+  files.clear();currentProjectId='';active='';addFile('index.html',source);active='index.html';selectFile(active);dirty=true;markDirty();runPreview();
+  $('projectStatus').textContent=files.size+' file · imported from '+url.hostname;
+  status.textContent='Imported the page HTML. Linked CSS, JavaScript and images may still be hosted remotely; to edit those files too, import the complete source ZIP/repository.';
+ }catch(e){
+  const message=e instanceof TypeError?'This website blocked browser access to its source (CORS), or the network request failed. Try a direct raw HTML URL, a project ZIP, or download the site files and upload them here.':(e?.message||'Could not import this URL.');
+  status.textContent=message;status.style.color='#ff9d9d';
+ }finally{btn.disabled=false;}
+}
+$('importGameUrlBtn').onclick=()=>importGameUrl($('importGameUrl').value);
+$('importGameUrl').addEventListener('keydown',e=>{if(e.key==='Enter')importGameUrl($('importGameUrl').value)});
 let previewRefreshTimer=null;
 $('editor').addEventListener('input',()=>{if(active&&files.has(active)){files.set(active,$('editor').value);markDirty();clearTimeout(previewRefreshTimer);previewRefreshTimer=setTimeout(runPreview,650)}});
 $('editor').addEventListener('keydown',event=>{if(event.key==='Tab'){event.preventDefault();const el=$('editor'),start=el.selectionStart,end=el.selectionEnd;el.setRangeText('  ',start,end,'end');el.dispatchEvent(new Event('input',{bubbles:true}))}});
