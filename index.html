@@ -444,7 +444,7 @@ body.light-mode .pilot-welcome{color:#626d80}
       <div class="studio-integrated-head"><span class="brand">Secret Unblocked <span>HTML Studio</span></span><span class="pill">Integrated workspace</span></div>
       
 <section class="intro"><div><h1>HTML Game Studio</h1><div class="muted">Import a game, browse its files, edit code and test it before publishing.</div></div><div class="tools" style="align-items:center"><span id="authStatus" class="pill">Checking sign-in…</span><button id="newBtn">New HTML</button><button id="saveBtn" class="primary">Save project</button><button id="exportBtn">Export ZIP</button></div></section>
-<section class="panel" id="studioAuthPanel" style="padding:12px;margin-bottom:14px"><strong>Studio account</strong><p class="notice" style="margin:5px 0 10px">Sign in here to load your URL games, publish Studio projects, and use Develop Pilot.</p><div class="tools" style="align-items:center"><input id="studioLoginEmail" class="field" type="email" autocomplete="email" placeholder="Email address" style="flex:1;min-width:180px;max-width:300px"><input id="studioLoginPassword" class="field" type="password" autocomplete="current-password" placeholder="Password" style="flex:1;min-width:160px;max-width:260px"><button id="studioSignInBtn" class="primary">Sign in</button><button id="studioSignOutBtn" hidden>Sign out</button></div><div id="studioLoginMessage" class="notice" style="margin-top:8px" role="status"></div></section>
+<section class="panel" id="studioAuthPanel" style="padding:12px;margin-bottom:14px"><strong>Deluxe account</strong><p id="studioLoginMessage" class="notice" style="margin:5px 0 0" role="status">Using your main Secret Unblocked Deluxe sign-in.</p></section>
 <section class="projectbar" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 14px;padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:12px"><strong>Projects</strong><select id="projectSelect" class="field" style="width:auto;min-width:190px"><option value="">Unsaved workspace</option></select><button id="newProjectBtn">New project</button><button id="saveLocalBtn" class="primary">Save project</button><span class="notice">Switch between projects saved in this browser.</span></section>
 <section class="drop"><div style="flex:1;min-width:240px"><strong>Upload or import a game</strong><div class="notice">Upload .html files or a project ZIP, or import the page source from a public URL. URL imports need the host to allow browser access (CORS).</div><div class="importbar" style="margin:10px 0 0"><input id="importGameUrl" class="field" type="url" placeholder="https://example.com/game/"><button id="importGameUrlBtn" class="primary">Import URL into Studio</button></div><div id="importGameUrlStatus" class="notice" style="margin-top:6px">Import a public game page to start editing its HTML.</div></div><div class="tools"><input id="fileInput" type="file" multiple accept=".html,.htm,.css,.js,.json,.txt,.svg,.png,.jpg,.jpeg,.gif,.webp,.woff,.woff2,.zip" hidden><button id="uploadBtn" class="primary">Choose files</button></div></section>
 
@@ -2051,11 +2051,9 @@ const PUBLISH_SUPABASE_URL='https://hhszfqpojhmwbmuhdmis.supabase.co';
 let studioSharedSupabaseClient=null;
 let publishSupabaseClient=null;
 function getStudioSupabaseClient(){
- // Studio has its own explicit sign-in. Keep its session separate from the main site's
- // account UI so Studio can authenticate directly and predictably.
- if(!window.supabase?.createClient)throw new Error('Supabase client failed to load. Refresh the page.');
- if(!studioSharedSupabaseClient)studioSharedSupabaseClient=window.supabase.createClient(PUBLISH_SUPABASE_URL,'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc2ZxcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk',{auth:{storageKey:'sud-studio-auth',persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});
- return studioSharedSupabaseClient;
+ // All Studio features reuse the main Deluxe Supabase client and its signed-in session.
+ if(typeof sb==='undefined'||!sb?.auth)throw new Error('Main site sign-in is unavailable. Refresh Deluxe and sign in again.');
+ return sb;
 }
 function publishMessage(message,isError=false){const el=$('publishStatus');el.textContent=message;el.style.color=isError?'#ff9d9d':'var(--muted)';}
 function fileMime(name){const ext=(name.match(/\.([^.]+)$/)||[])[1]?.toLowerCase();return ({html:'text/html',htm:'text/html',css:'text/css',js:'application/javascript',json:'application/json',txt:'text/plain',svg:'image/svg+xml',png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',mp3:'audio/mpeg',ogg:'audio/ogg',wav:'audio/wav',mp4:'video/mp4',webm:'video/webm',woff:'font/woff',woff2:'font/woff2',ttf:'font/ttf',otf:'font/otf'})[ext]||'application/octet-stream';}
@@ -2283,62 +2281,33 @@ function setStudioLoginMessage(message,isError=false){
  const el=document.getElementById('studioLoginMessage');if(!el)return;
  el.textContent=message||'';el.style.color=isError?'#ff9d9d':'var(--muted)';
 }
-async function studioSignIn(){
- const btn=$('studioSignInBtn');btn.disabled=true;setStudioLoginMessage('Signing in…');
- try{
-  if(!window.supabase?.createClient)throw new Error('Supabase client failed to load. Refresh Studio.');
-  const client=developSupabaseClient||getStudioSupabaseClient();
-  developSupabaseClient=client;
-  const email=$('studioLoginEmail').value.trim(),password=$('studioLoginPassword').value;
-  if(!email||!password)throw new Error('Enter your email and password.');
-  const {data,error}=await client.auth.signInWithPassword({email,password});
-  if(error)throw error;
-  $('studioLoginPassword').value='';
-  const user=data?.user||data?.session?.user;
-  if(!user)throw new Error('Sign-in returned no user session. Try again.');
-  setStudioLoginMessage('Signed in successfully.');
-  const status=$('authStatus');
-  status.textContent='Signed in: '+(user.email||'account');
-  status.style.borderColor='#347a55';
-  $('studioSignInBtn').hidden=true;$('studioSignOutBtn').hidden=false;
-  $('studioLoginEmail').disabled=true;$('studioLoginPassword').disabled=true;
-  $('refreshUrlGames').disabled=false;
-  urlGamesClient=client;publishSupabaseClient=client;
- }catch(e){setStudioLoginMessage(e?.message||'Could not sign in.',true)}
- finally{btn.disabled=false}
-}
-$('studioSignInBtn').onclick=studioSignIn;
-$('studioLoginPassword').addEventListener('keydown',e=>{if(e.key==='Enter')studioSignIn()});
-$('studioSignOutBtn').onclick=async()=>{
- const client=developSupabaseClient;
- if(!client)return;
- const btn=$('studioSignOutBtn');btn.disabled=true;
- try{const {error}=await client.auth.signOut();if(error)throw error;setStudioLoginMessage('Signed out.');await updateStudioAuthStatus();}
- catch(e){setStudioLoginMessage(e?.message||'Could not sign out.',true)}
- finally{btn.disabled=false}
-};
+let studioAuthListenerRegistered=false;
 async function updateStudioAuthStatus(){
  const el=document.getElementById('authStatus');
  if(!el)return;
  try{
-  if(!window.supabase?.createClient){el.textContent='Sign-in unavailable — refresh the page';return;}
   const client=getStudioSupabaseClient();
+  // Use one shared client for URL games, publishing and Develop Pilot.
   developSupabaseClient=client;publishSupabaseClient=client;urlGamesClient=client;
   const paintAuth=u=>{
-   el.textContent=u?'Signed in: '+(u.email||'account'):'Not signed in — sign in below';
-   el.title=u?'Signed in to Secret Unblocked Deluxe':'Sign in using the form below';
+   el.textContent=u?'Signed in: '+(u.email||'account'):'Not signed in — sign in on the main Deluxe page';
+   el.title=u?'Using your main Secret Unblocked Deluxe session':'Sign in on the main Deluxe page, then return to Studio';
    el.style.borderColor=u?'#347a55':'#765b35';
-   $('studioSignInBtn').hidden=!!u;$('studioSignOutBtn').hidden=!u;
-   $('studioLoginEmail').disabled=!!u;$('studioLoginPassword').disabled=!!u;
-   if(u){setStudioLoginMessage('Signed in as '+(u.email||'your account')+'.');$('refreshUrlGames').disabled=false;}
+   setStudioLoginMessage(u?'Studio is using your main Deluxe account ('+(u.email||'account')+').':'Please sign in on the main Deluxe page. Studio uses that same account.');
+   const refresh=$('refreshUrlGames');if(refresh)refresh.disabled=!u;
   };
   const {data,error}=await client.auth.getSession();
   if(error)throw error;
   paintAuth(data?.session?.user||null);
-  client.auth.onAuthStateChange((_event,session)=>{
-   if(_event==='SIGNED_IN'||_event==='SIGNED_OUT'||_event==='INITIAL_SESSION')paintAuth(session?.user||null);
-  });
- }catch(e){el.textContent='Sign-in unavailable';urlGamesMessage(e?.message||'Could not check sign-in status.',true);console.error('Studio auth status',e);}
+  if(!studioAuthListenerRegistered){
+   studioAuthListenerRegistered=true;
+   client.auth.onAuthStateChange((_event,session)=>paintAuth(session?.user||null));
+  }
+ }catch(e){
+  el.textContent='Main sign-in unavailable';
+  setStudioLoginMessage(e?.message||'Could not check the main Deluxe sign-in.',true);
+  console.error('Studio auth status',e);
+ }
 }
 
 })();
