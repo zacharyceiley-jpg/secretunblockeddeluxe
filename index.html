@@ -78,7 +78,28 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     .game-form label{display:block;font-size:13px;color:var(--muted)}
     .game-form input,.game-form textarea{display:block;width:100%;margin-top:7px;padding:12px 13px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);outline:none;resize:vertical}
     .game-form input:focus,.game-form textarea:focus{border-color:var(--accent)}
-    .game-card{background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden;display:flex;flex-direction:column}
+    /* Deluxe game discovery layout */
+    .game-card{position:relative;background:var(--panel);border:1px solid var(--line);border-radius:15px;overflow:hidden;display:flex;flex-direction:column;min-width:0}
+    .game-card:hover{border-color:#4b5260}
+    .game-card .game-thumb{width:100%;aspect-ratio:1/1;height:auto;background:linear-gradient(135deg,#252b38,#151922);display:grid;place-items:center;font-size:48px;overflow:hidden;position:relative}
+    .game-card .game-thumb img{width:100%;height:100%;object-fit:cover}
+    .game-card .game-card-body{position:absolute;inset:0;padding:15px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;background:linear-gradient(180deg,rgba(0,0,0,0) 22%,rgba(0,0,0,.88) 100%);opacity:0;transition:opacity .18s ease;color:#fff}
+    .game-card:hover .game-card-body,.game-card:focus-within .game-card-body{opacity:1}
+    .game-card .game-title{font-weight:800;font-size:17px;color:#fff}
+    .game-card .game-description,.game-card .game-meta{display:none}
+    .game-card-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+    .game-card-actions button,.game-card-actions a{display:inline-flex;align-items:center;justify-content:center;text-decoration:none}
+    .game-discovery-section{margin-top:30px}
+    .game-discovery-section .section-heading{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:13px}
+    .game-discovery-section .section-heading h2{margin:0}
+    .game-discovery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:13px}
+    .game-discovery-grid .game-card{cursor:pointer}
+    .game-detail-layout{display:grid;grid-template-columns:minmax(180px,300px) minmax(0,1fr);gap:24px;align-items:start}
+    .game-detail-thumbnail{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
+    .game-detail-description{color:var(--muted);line-height:1.65;white-space:pre-wrap}
+    .game-tag{display:inline-flex;padding:5px 9px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted);margin:3px 5px 3px 0}
+    @media(max-width:620px){.game-detail-layout{grid-template-columns:1fr}.game-detail-thumbnail{max-width:240px}.game-discovery-grid{grid-template-columns:repeat(auto-fill,minmax(125px,1fr))}}
+
     .game-card:hover{border-color:#4b5260}
     .game-thumb{width:100%;height:150px;background:linear-gradient(135deg,#252b38,#151922);display:grid;place-items:center;font-size:48px;overflow:hidden}
     .game-thumb img{width:100%;height:100%;object-fit:cover}
@@ -270,6 +291,10 @@ body.light-mode .pilot-welcome{color:#626d80}
         <div class="section-heading"><div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div></div>
         <div id="gameGrid" class="user-grid"><div class="loading">Loading games…</div></div>
       </div>
+    </section>
+
+    <section id="gameDetailPage" class="page">
+      <div id="gameDetailRoot"></div>
     </section>
 
     <section id="gamePage" class="page">
@@ -621,6 +646,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (name === "settings") renderExclusiveThemeSettings();
     if (name === "inbox" && !currentUser) openAuth("login");
     if (name === "games") loadGames();
+    if (name === "gameDetail" && !allPublishedGames.length) loadGames();
     if (name === "admin") loadAdminPanel();
     if (name === "inbox") loadInbox();
   }
@@ -1037,9 +1063,96 @@ body.light-mode .pilot-welcome{color:#626d80}
       String(g.description || "").toLowerCase().includes(q) ||
       String(g.profiles?.username || "").toLowerCase().includes(q)
     );
-
-    $("gameGrid").innerHTML = publicGames.map(g => renderGameCard(g)).join("") ||
+    const gameMarkup = (games) => games.map(g => renderDiscoveryCard(g)).join("");
+    const section = (title, eyebrow, games, id) => games.length ? `
+      <section class="game-discovery-section" id="${id}">
+        <div class="section-heading"><div><p class="eyebrow">${eyebrow}</p><h2>${title}</h2></div></div>
+        <div class="game-discovery-grid">${gameMarkup(games)}</div>
+      </section>` : "";
+    const recentlyPlayed = getDeluxeRecentGames().map(id => publicGames.find(g => g.id === id)).filter(Boolean).slice(0,8);
+    const recentIds = new Set(recentlyPlayed.map(g => g.id));
+    const remaining = publicGames.filter(g => !recentIds.has(g.id));
+    const recommended = remaining.filter(g => matchesPreferredGenres(g));
+    const trending = [...publicGames].sort((a,b) => getDeluxePlaySeconds(b.id)-getDeluxePlaySeconds(a.id)).slice(0,12);
+    const trendingIds = new Set(trending.map(g => g.id));
+    const rest = publicGames.filter(g => !recentIds.has(g.id) && !trendingIds.has(g.id));
+    const fullLibrary = [...publicGames];
+    $("gameGrid").innerHTML =
+      section("Continue","RECENTLY PLAYED",recentlyPlayed,"continueGames") +
+      section("Recommended for you","BASED ON YOUR GENRES",recommended,"recommendedGames") +
+      section("Trending","MOST PLAYED",trending,"trendingGames") +
+      section("All games","FULL LIBRARY",fullLibrary,"allGames") ||
       '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
+    if (!publicGames.length) $("gameGrid").innerHTML = '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
+  }
+
+  const DELUXE_PLAYTIME_KEY = "deluxeGamePlaytimeV1";
+  const DELUXE_RECENT_KEY = "deluxeRecentGamesV1";
+  const DELUXE_GENRES_KEY = "deluxePreferredGenresV1";
+  function readDeluxeStore(key, fallback) {
+    try { const value = JSON.parse(localStorage.getItem(key) || "null"); return value ?? fallback; } catch { return fallback; }
+  }
+  function getDeluxePlaytime() { return readDeluxeStore(DELUXE_PLAYTIME_KEY, {}); }
+  function getDeluxePlaySeconds(id) { return Number(getDeluxePlaytime()[id] || 0); }
+  function getDeluxeRecentGames() { const value = readDeluxeStore(DELUXE_RECENT_KEY, []); return Array.isArray(value) ? value : []; }
+  function rememberDeluxeGame(id) {
+    const recent = getDeluxeRecentGames().filter(item => item !== id);
+    recent.unshift(id);
+    try { localStorage.setItem(DELUXE_RECENT_KEY, JSON.stringify(recent.slice(0,8))); } catch {}
+  }
+  function matchesPreferredGenres(g) {
+    const preferred = readDeluxeStore(DELUXE_GENRES_KEY, []);
+    if (!Array.isArray(preferred) || !preferred.length) return false;
+    const tags = Array.isArray(g.genres) ? g.genres : (Array.isArray(g.tags) ? g.tags : []);
+    return tags.some(tag => preferred.includes(String(tag)));
+  }
+  function formatDeluxeTime(seconds) {
+    seconds = Math.max(0, Math.floor(Number(seconds) || 0));
+    const hours = Math.floor(seconds/3600), minutes = Math.floor((seconds%3600)/60);
+    return hours ? hours + "h " + minutes + "m" : minutes + "m";
+  }
+  function renderDiscoveryCard(g) {
+    const title = escapeHtml(g.title || "Untitled Game");
+    const thumb = g.thumbnail_url && validGameUrl(g.thumbnail_url) ? `<img src="${escapeHtml(g.thumbnail_url)}" alt="">` : "🎮";
+    return `<article class="game-card" tabindex="0" role="button" aria-label="View ${title}" onclick="openGameDetails('${g.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openGameDetails('${g.id}')}">
+      <div class="game-thumb">${thumb}</div><div class="game-card-body"><div class="game-title">${title}</div>
+      <div class="game-card-actions"><button class="primary" onclick="event.stopPropagation();openGameDetails('${g.id}')">View game</button></div></div></article>`;
+  }
+  function openGameDetails(id) {
+    const g = allPublishedGames.find(item => item.id === id);
+    if (!g) return;
+    const thumb = g.thumbnail_url && validGameUrl(g.thumbnail_url) ? `<img class="game-detail-thumbnail" src="${escapeHtml(g.thumbnail_url)}" alt="${escapeHtml(g.title || "Game")} thumbnail">` : `<div class="game-detail-thumbnail" style="display:grid;place-items:center;font-size:64px">🎮</div>`;
+    const genres = Array.isArray(g.genres) ? g.genres : (Array.isArray(g.tags) ? g.tags : []);
+    const tags = genres.map(tag => `<span class="game-tag">${escapeHtml(tag)}</span>`).join("");
+    const age = g.age_recommendation || g.age_rating || "Not specified";
+    $("gameDetailRoot").innerHTML = `<div class="page-title"><button class="secondary" onclick="showPage('games')">← Back to games</button><p class="eyebrow" style="margin-top:18px">GAME DETAILS</p><h1>${escapeHtml(g.title || "Untitled Game")}</h1></div>
+      <div class="game-detail-layout">${thumb}<div><h2>${escapeHtml(g.title || "Untitled Game")}</h2><p class="game-detail-description">${escapeHtml(g.description || "No description has been added yet.")}</p>
+      <div>${tags || '<span class="game-tag">Genre not set</span>'}</div><p class="game-meta">Age recommendation: ${escapeHtml(age)}</p>
+      <p class="game-meta">Created by ${escapeHtml(g.profiles?.username || "Unknown creator")}</p><div class="game-card-actions"><button class="primary" onclick="playGameFromDetails('${g.id}')">▶ Play</button></div></div></div>`;
+    showPage("gameDetail");
+  }
+  function playGameFromDetails(id) {
+    rememberDeluxeGame(id);
+    startDeluxePlayTracking(id);
+    openGame(id);
+  }
+  let deluxePlayTrackingId = null;
+  let deluxePlayTrackingStarted = 0;
+  function startDeluxePlayTracking(id) {
+    if (deluxePlayTrackingId && deluxePlayTrackingStarted) {
+      const elapsed = Math.floor((Date.now()-deluxePlayTrackingStarted)/1000);
+      if (elapsed > 0) {
+        const values = getDeluxePlaytime(); values[deluxePlayTrackingId] = Number(values[deluxePlayTrackingId] || 0) + elapsed;
+        try { localStorage.setItem(DELUXE_PLAYTIME_KEY, JSON.stringify(values)); } catch {}
+      }
+    }
+    deluxePlayTrackingId = id; deluxePlayTrackingStarted = Date.now();
+  }
+  function showDeluxePlaytime() {
+    const values = getDeluxePlaytime();
+    const rows = [...allPublishedGames].sort((a,b)=>getDeluxePlaySeconds(b.id)-getDeluxePlaySeconds(a.id));
+    $("gameDetailRoot").innerHTML = `<div class="page-title"><button class="secondary" onclick="showPage('games')">← Back to games</button><p class="eyebrow" style="margin-top:18px">YOUR ACTIVITY</p><h1>Playtime</h1><p>Playtime is tracked on this browser.</p></div><div class="admin-list">${rows.map(g=>`<div class="admin-row"><b>${escapeHtml(g.title || "Untitled Game")}</b><span style="float:right">${formatDeluxeTime(values[g.id] || 0)}</span></div>`).join("") || '<p>No games to show yet.</p>'}</div>`;
+    showPage("gameDetail");
   }
 
   async function loadGames(){
@@ -1166,6 +1279,8 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (error || !data) return alert(error?.message || "Game not found.");
     if (data.status !== "published" && data.creator_id !== currentUser?.id && currentRole !== "admin") return alert("This game is not published.");
     currentGame = data;
+    rememberDeluxeGame(id);
+    startDeluxePlayTracking(id);
     clearInterval(gameChatRefreshTimer);
     if (sfothPlayTimer) clearTimeout(sfothPlayTimer);
     sfothPlayTimer = null;
