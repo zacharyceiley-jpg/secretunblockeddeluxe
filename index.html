@@ -1955,6 +1955,44 @@ body.light-mode .pilot-welcome{color:#626d80}
   setInterval(() => checkCurrentBan().catch(err => console.error("Ban check error:", err)), 15000);
   </script>
 
+  <div id="downloadDeluxeModal" class="modal hidden" aria-hidden="true">
+    <div class="modal-backdrop" id="downloadDeluxeBackdrop"></div>
+    <section class="modal-card download-modal-card" role="dialog" aria-modal="true" aria-labelledby="downloadDeluxeTitle">
+      <button class="modal-close" id="downloadDeluxeClose" aria-label="Close download options">×</button>
+      <p class="eyebrow">TAKE DELUXE WITH YOU</p>
+      <h2 id="downloadDeluxeTitle" style="margin:0 35px 8px 0">Download Secret Unblocked Deluxe</h2>
+      <p style="color:var(--muted);line-height:1.6;margin:0">Choose your device. Mac and Windows installers are built by the project's release workflow. iPhone and iPad use Apple's supported Add to Home Screen option.</p>
+      <div class="download-options">
+        <article class="download-option">
+          <div class="platform-icon" aria-hidden="true"></div>
+          <h3>macOS</h3>
+          <p>Universal disk image for Apple silicon and Intel Macs.</p>
+          <a class="primary" href="https://github.com/zacharyceiley-jpg/secretunblockeddeluxe/releases/latest/download/Secret-Unblocked-Deluxe-universal.dmg">Download for Mac</a>
+        </article>
+        <article class="download-option">
+          <div class="platform-icon" aria-hidden="true">⊞</div>
+          <h3>Windows</h3>
+          <p>Installer for 64-bit Windows PCs. Run it and follow the setup prompts.</p>
+          <a class="primary" href="https://github.com/zacharyceiley-jpg/secretunblockeddeluxe/releases/latest/download/Secret-Unblocked-Deluxe-x64.exe">Download for Windows</a>
+        </article>
+        <article class="download-option">
+          <div class="platform-icon" aria-hidden="true">📱</div>
+          <h3>iPhone &amp; iPad</h3>
+          <p>Add Deluxe to your Home Screen from Safari. This is a web app, not an App Store download.</p>
+          <button type="button" id="iosInstallHelp">How to install</button>
+        </article>
+      </div>
+      <div id="iosInstallInstructions" class="download-note hidden" aria-live="polite">
+        <strong>Install on iPhone or iPad</strong><br>
+        1. Open <a href="https://zacharyceiley-jpg.github.io/secretunblockeddeluxe/" target="_blank" rel="noopener">Secret Unblocked Deluxe</a> in Safari.<br>
+        2. Tap the Share button.<br>
+        3. Choose “Add to Home Screen”, then tap Add.<br>
+        Online features require an internet connection.
+      </div>
+      <div class="download-note">Desktop installers are published through GitHub Releases. If a download returns “not found”, the first versioned release has not been published yet. Desktop builds currently load the live Deluxe website, so they need internet access and do not work offline.</div>
+    </section>
+  </div>
+
   <button id="sitePilotLauncher" type="button" aria-controls="sitePilotPanel" aria-expanded="false">✦ Site Pilot AI</button>
   <section id="sitePilotPanel" class="hidden" aria-label="Site Pilot AI chat" aria-live="polite">
     <header class="pilot-head"><div><strong>✦ Site Pilot AI</strong><div class="pilot-sub">Your guide to Secret Unblocked Deluxe</div></div><div class="pilot-head-actions"><button class="pilot-icon" id="pilotStopSpeech" title="Stop speaking" aria-label="Stop speaking">■</button><button class="pilot-icon" id="pilotClose" aria-label="Close Site Pilot AI">✕</button></div></header>
