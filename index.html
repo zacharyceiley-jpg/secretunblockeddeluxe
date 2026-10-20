@@ -4,6 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#111318">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Deluxe">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="deluxe-icon.svg" type="image/svg+xml">
   <title>Secret Unblocked Deluxe</title>
   <style>
 *{box-sizing:border-box}
@@ -27,6 +32,16 @@ button{cursor:pointer}
 .account-button,.secondary,.primary,.icon-button{border:1px solid var(--line);border-radius:10px;padding:9px 15px;background:var(--panel2);color:var(--text)}
 .primary{background:var(--accent);border-color:var(--accent);font-weight:700}
 .primary:hover{background:var(--accent2)}
+    .download-modal-card{width:min(650px,100%);max-height:min(88vh,760px);overflow:auto}
+    .download-options{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:20px}
+    .download-option{display:flex;flex-direction:column;gap:10px;padding:17px;background:var(--panel);border:1px solid var(--line);border-radius:14px;min-width:0}
+    .download-option .platform-icon{font-size:30px}
+    .download-option h3{margin:0;font-size:17px}
+    .download-option p{color:var(--muted);font-size:13px;line-height:1.5;margin:0;flex:1}
+    .download-option a,.download-option button{display:block;text-align:center;text-decoration:none;width:100%;padding:10px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font-weight:700;font-size:13px}
+    .download-option .primary{background:var(--accent);border-color:var(--accent)}
+    .download-note{margin-top:16px;padding:13px 14px;border:1px solid var(--line);border-radius:12px;color:var(--muted);font-size:13px;line-height:1.6}
+    @media(max-width:620px){.download-options{grid-template-columns:1fr}.download-option{display:grid;grid-template-columns:42px 1fr;align-items:start}.download-option .platform-icon{grid-row:span 3}.download-option a,.download-option button{grid-column:2}}
 .secondary:hover,.account-button:hover,.icon-button:hover{background:#222732}
 .icon-button{padding:9px 11px}
 main{max-width:1200px;margin:auto;padding:50px 28px 90px}
@@ -205,6 +220,7 @@ body.light-mode .pilot-welcome{color:#626d80}
           <div class="hero-actions">
             <button class="primary" data-page="games">Explore Games</button>
             <button class="secondary" id="heroAccountButton">Create an Account</button>
+            <button class="secondary" id="downloadDeluxeButton" type="button">⬇ Download Deluxe</button>
           </div>
         </div>
         <div class="hero-card">
@@ -1947,6 +1963,35 @@ body.light-mode .pilot-welcome{color:#626d80}
     <div id="pilotStatus" class="pilot-status">Ready when you are.</div>
     <form id="pilotForm" class="pilot-compose"><input id="pilotInput" maxlength="1200" autocomplete="off" placeholder="Ask Site Pilot…" aria-label="Message Site Pilot AI" required><button id="pilotSend" type="submit">Send</button></form>
   </section>
+
+  <script>
+  (() => {
+    const openButton = document.getElementById('downloadDeluxeButton');
+    const modal = document.getElementById('downloadDeluxeModal');
+    const closeButton = document.getElementById('downloadDeluxeClose');
+    const backdrop = document.getElementById('downloadDeluxeBackdrop');
+    const iosButton = document.getElementById('iosInstallHelp');
+    const iosInstructions = document.getElementById('iosInstallInstructions');
+    if (!openButton || !modal) return;
+    function setOpen(open) {
+      modal.classList.toggle('hidden', !open);
+      modal.setAttribute('aria-hidden', String(!open));
+      if (open) closeButton.focus();
+      else openButton.focus();
+    }
+    openButton.addEventListener('click', () => setOpen(true));
+    closeButton.addEventListener('click', () => setOpen(false));
+    backdrop.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && !modal.classList.contains('hidden')) setOpen(false);
+    });
+    iosButton.addEventListener('click', () => {
+      const isHidden = iosInstructions.classList.toggle('hidden');
+      iosButton.textContent = isHidden ? 'How to install' : 'Hide instructions';
+    });
+  })();
+  </script>
+
   <script>
   (() => {
     const $p = id => document.getElementById(id);
