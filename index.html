@@ -1405,6 +1405,8 @@ body.light-mode .pilot-welcome{color:#626d80}
 
   function leaveGame(){
     flushDeluxePlayTracking();
+    deluxePlayTrackingId = null;
+    deluxePlayTrackingStarted = 0;
     clearInterval(gameChatRefreshTimer);
     if (sfothPlayTimer) clearTimeout(sfothPlayTimer);
     sfothPlayTimer = null;
@@ -1964,6 +1966,14 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
 
   refreshSession();
+  // Save active play sessions periodically, not only when the player exits.
+  setInterval(() => {
+    if (currentGame && deluxePlayTrackingId === currentGame.id) flushDeluxePlayTracking();
+  }, 15000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden" && currentGame) flushDeluxePlayTracking();
+  });
+  window.addEventListener("pagehide", () => flushDeluxePlayTracking());
   setInterval(() => checkCurrentBan().catch(err => console.error("Ban check error:", err)), 15000);
   </script>
 
