@@ -1130,7 +1130,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     const recentIds = new Set(recentlyPlayed.map(g => g.id));
     const remaining = publicGames.filter(g => !recentIds.has(g.id));
     const recommended = remaining.filter(g => matchesPreferredGenres(g));
-    const trending = [...publicGames].sort((a,b) => getDeluxePlaySeconds(b.id)-getDeluxePlaySeconds(a.id)).slice(0,12);
+    const trending = [...publicGames].sort((a,b) => Number(b.total_playtime || 0)-Number(a.total_playtime || 0)).slice(0,12);
     const trendingIds = new Set(trending.map(g => g.id));
     const rest = publicGames.filter(g => !recentIds.has(g.id) && !trendingIds.has(g.id));
     const fullLibrary = [...publicGames];
@@ -1212,11 +1212,23 @@ body.light-mode .pilot-welcome{color:#626d80}
   function flushDeluxePlayTracking() {
     if (!deluxePlayTrackingId || !deluxePlayTrackingStarted) return;
     const elapsed = Math.floor((Date.now()-deluxePlayTrackingStarted)/1000);
-    if (elapsed > 0) {
-      const values = getDeluxePlaytime();
-      values[deluxePlayTrackingId] = Number(values[deluxePlayTrackingId] || 0) + elapsed;
-      try { localStorage.setItem(DELUXE_PLAYTIME_KEY, JSON.stringify(values)); } catch {}
-      deluxePlayTrackingStarted = Date.now();
+    if (elapsed < 1) return;
+    const gameId = deluxePlayTrackingId;
+    const values = getDeluxePlaytime();
+    values[gameId] = Number(values[gameId] || 0) + elapsed;
+    try { localStorage.setItem(DELUXE_PLAYTIME_KEY, JSON.stringify(values)); } catch {}
+    deluxePlayTrackingStarted = Date.now();
+    // Persist in short, bounded increments so closing the game does not lose a long session.
+    if (sb && currentUser) {
+      sb.rpc("record_game_playtime", {p_game_id: gameId, p_seconds: Math.min(elapsed, 60)})
+        .then(({error}) => {
+          if (error) console.error("Could not save server playtime:", error.message);
+          else {
+            const game = allPublishedGames.find(item => item.id === gameId);
+            if (game) game.total_playtime = Number(game.total_playtime || 0) + Math.min(elapsed, 60);
+            renderGames($("gameSearch")?.value || "");
+          }
+        }).catch(error => console.error("Could not save server playtime:", error));
     }
   }
   function startDeluxePlayTracking(id) {
@@ -1236,7 +1248,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
 
     const publicResult = await sb.from("games")
-      .select("id,title,description,thumbnail_url,icon_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)")
+      .select("id,title,description,thumbnail_url,icon_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,total_playtime,profiles(username)")
       .eq("status","published")
       .order("created_at",{ascending:false});
 
