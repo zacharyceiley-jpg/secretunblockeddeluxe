@@ -333,6 +333,16 @@ body.light-mode .pilot-welcome{color:#626d80}
           <input id="gameTitle" type="text" maxlength="90" required placeholder="My awesome game">
           <label class="small-note" for="gameDescription">Description</label>
           <textarea id="gameDescription" rows="3" maxlength="600" placeholder="What is your game about?"></textarea>
+          <label class="small-note" for="gameAgeRecommendation">Age recommendation</label>
+          <select id="gameAgeRecommendation">
+            <option value="">Not specified</option>
+            <option value="All ages">All ages</option>
+            <option value="7+">7+</option>
+            <option value="10+">10+</option>
+            <option value="13+">13+</option>
+            <option value="16+">16+</option>
+            <option value="18+">18+</option>
+          </select>
           <label class="small-note" for="gameUrl">Game URL</label>
           <input id="gameUrl" type="url" required placeholder="https://example.com/game">
           <label class="small-note" for="gameThumbnail">Thumbnail image URL</label>
@@ -1291,6 +1301,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (editingGameId) return updateGame(editingGameId);
     const title=$("gameTitle").value.trim();
     const description=$("gameDescription").value.trim();
+    const age_recommendation=$("gameAgeRecommendation").value;
     const thumbnail_url=$("gameThumbnail").value.trim();
     const icon_url=$("gameIcon").value.trim();
     const game_url=$("gameUrl").value.trim();
@@ -1300,7 +1311,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if(icon_url && !validGameUrl(icon_url)) return setGameFormMessage("The icon URL must be HTTP or HTTPS.",true);
     $("submitGameButton").disabled=true;
     setGameFormMessage("Submitting game…");
-    const {error}=await sb.from("games").insert({creator_id:currentUser.id,title,description,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,status:"pending"});
+    const {error}=await sb.from("games").insert({creator_id:currentUser.id,title,description,age_recommendation:age_recommendation||null,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,status:"pending"});
     $("submitGameButton").disabled=false;
     if(error){console.error(error);return setGameFormMessage(error.message,true);}
     $("gameForm").reset();
@@ -1328,6 +1339,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("submitGameButton").textContent = "Save changes";
     $("gameTitle").value = game.title || "";
     $("gameDescription").value = game.description || "";
+    $("gameAgeRecommendation").value = game.age_recommendation || game.age_rating || "";
     $("gameThumbnail").value = game.thumbnail_url || "";
     $("gameIcon").value = game.icon_url || "";
     $("gameUrl").value = game.game_url || "";
@@ -1344,12 +1356,14 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("submitGameButton").textContent = "Submit game";
     $("gameForm")?.reset();
     $("gameChatEnabled").checked = true;
+    $("gameAgeRecommendation").value = "";
     $("gameFormMessage").textContent = "";
   }
 
   async function updateGame(id){
     const title = $("gameTitle").value.trim();
     const description = $("gameDescription").value.trim();
+    const age_recommendation = $("gameAgeRecommendation").value;
     const thumbnail_url = $("gameThumbnail").value.trim();
     const icon_url = $("gameIcon").value.trim();
     const game_url = $("gameUrl").value.trim();
@@ -1359,7 +1373,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (icon_url && !validGameUrl(icon_url)) return setGameFormMessage("The icon URL must be HTTP or HTTPS.", true);
     $("submitGameButton").disabled=true;
     setGameFormMessage("Saving changes…");
-    const {error} = await sb.from("games").update({title,description,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,updated_at:new Date().toISOString()}).eq("id",id).eq("creator_id",currentUser.id);
+    const {error} = await sb.from("games").update({title,description,age_recommendation:age_recommendation||null,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,updated_at:new Date().toISOString()}).eq("id",id).eq("creator_id",currentUser.id);
     $("submitGameButton").disabled=false;
     if (error) return setGameFormMessage(error.message,true);
     $("gameUploader").classList.add("hidden");
