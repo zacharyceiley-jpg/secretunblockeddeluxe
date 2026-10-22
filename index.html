@@ -662,7 +662,7 @@ body.light-mode .pilot-welcome{color:#626d80}
       return;
     }
     ownedThemeGames = gamesResult.data || [];
-    customGameThemes = (themesResult.data || []).filter(theme => ownedThemeGames.some(game => game.id === theme.game_id));
+    customGameThemes = themesResult.data || [];
     customGameThemeUnlocks = unlocksResult.data || [];
     const previous = select.value;
     select.innerHTML = '<option value="">Choose one of your games…</option>' + ownedThemeGames.map(game => '<option value="' + escapeHtml(game.id) + '">' + escapeHtml(game.title || "Untitled game") + (game.status === "published" ? "" : " (unpublished)") + '</option>').join("");
@@ -682,7 +682,7 @@ body.light-mode .pilot-welcome{color:#626d80}
       return;
     }
     collection.innerHTML = customGameThemes.map(theme => {
-      const game = ownedThemeGames.find(item => item.id === theme.game_id);
+      const game = ownedThemeGames.find(item => item.id === theme.game_id) || allPublishedGames.find(item => item.id === theme.game_id);
       const progress = customGameThemeUnlocks.find(item => item.game_id === theme.game_id);
       const seconds = Math.min(60, Number(progress?.fresh_seconds || 0));
       const unlocked = !!progress?.unlocked_at;
