@@ -293,6 +293,29 @@ body.light-mode .pilot-welcome{color:#626d80}
         </article>
       </div>
       <div id="exclusiveThemeMessage" class="theme-message" aria-live="polite"></div>
+      <div id="gameThemeDesigner" style="margin-top:38px">
+        <div class="section-heading"><div><p class="eyebrow">CREATE YOUR OWN</p><h2>Game Theme Designer</h2></div></div>
+        <p class="settings-note">Create a theme only for a game you published. Players must earn it by playing that specific game for 60 new seconds after the theme exists. Previously recorded playtime does not count.</p>
+        <article class="exclusive-theme-card" style="margin:16px 0">
+          <div class="exclusive-theme-body">
+            <label for="gameThemeOwnedGame">Your game</label>
+            <select id="gameThemeOwnedGame" style="display:block;width:100%;margin:7px 0 14px;padding:10px;border-radius:9px;background:var(--panel);color:var(--text);border:1px solid var(--line)"><option value="">Sign in to load your games</option></select>
+            <label for="gameThemeName">Theme name</label>
+            <input id="gameThemeName" maxlength="40" placeholder="My Game Theme" style="display:block;width:100%;margin:7px 0 14px">
+            <div class="settings-grid">
+              <div><label for="gameThemeBackground">Background colour</label><input id="gameThemeBackground" type="color" value="#111318" style="display:block;width:100%;height:44px;margin-top:7px"></div>
+              <div><label for="gameThemeText">Text colour</label><input id="gameThemeText" type="color" value="#f5f5f5" style="display:block;width:100%;height:44px;margin-top:7px"></div>
+              <div><label for="gameThemeAccent">Accent colour</label><input id="gameThemeAccent" type="color" value="#7c5cff" style="display:block;width:100%;height:44px;margin-top:7px"></div>
+            </div>
+            <label for="gameThemeBackgroundImage" style="display:block;margin-top:14px">Optional background image URL</label>
+            <input id="gameThemeBackgroundImage" type="url" placeholder="https://example.com/background.jpg" style="display:block;width:100%;margin:7px 0 14px">
+            <div id="gameThemeDesignerMessage" class="theme-message" aria-live="polite"></div>
+            <div class="theme-actions"><button id="saveGameTheme" class="primary" type="button">Save theme for this game</button><button id="clearGameTheme" class="secondary" type="button">Clear editor</button></div>
+          </div>
+        </article>
+        <div class="section-heading"><div><p class="eyebrow">YOUR GAME THEMES</p><h2>Unlocks</h2></div></div>
+        <div id="gameThemeCollection" class="settings-grid"><p class="settings-note">Sign in to manage your game themes.</p></div>
+      </div>
       <div class="section-heading" style="margin-top:36px"><div><p class="eyebrow">ACCOUNT SYNC</p><h2>Saved to your account</h2></div></div>
       <p class="settings-note">Unlocks and theme selection are stored on your signed-in Deluxe profile, not in this browser's local storage. Sign in before unlocking or applying a theme to keep it synced.</p>
     </section>
@@ -570,6 +593,137 @@ body.light-mode .pilot-welcome{color:#626d80}
   let pendingSfothUnlock = false;
 
 
+  let ownedThemeGames = [];
+  let customGameThemes = [];
+  let customGameThemeUnlocks = [];
+  let activeGameThemeId = null;
+
+  function setGameThemeDesignerMessage(message, error=false) {
+    const el = $("gameThemeDesignerMessage");
+    if (el) { el.textContent = message || ""; el.style.color = error ? "#ff7b7b" : "var(--muted)"; }
+  }
+  function clearGameThemeEditor() {
+    $("gameThemeName").value = "";
+    $("gameThemeBackground").value = "#111318";
+    $("gameThemeText").value = "#f5f5f5";
+    $("gameThemeAccent").value = "#7c5cff";
+    $("gameThemeBackgroundImage").value = "";
+    setGameThemeDesignerMessage("");
+  }
+  function loadGameThemeIntoEditor() {
+    const gameId = $("gameThemeOwnedGame")?.value;
+    const theme = customGameThemes.find(item => item.game_id === gameId);
+    if (!theme) { clearGameThemeEditor(); return; }
+    $("gameThemeName").value = theme.theme_name || "";
+    $("gameThemeBackground").value = theme.background_color || "#111318";
+    $("gameThemeText").value = theme.text_color || "#f5f5f5";
+    $("gameThemeAccent").value = theme.accent_color || "#7c5cff";
+    $("gameThemeBackgroundImage").value = theme.background_image_url || "";
+    setGameThemeDesignerMessage("Loaded the saved theme for this game.");
+  }
+  function applyCustomGameTheme(theme) {
+    if (!theme) {
+      activeGameThemeId = null;
+      document.body.style.backgroundColor = "";
+      document.body.style.color = "";
+      document.body.style.backgroundImage = "";
+      document.documentElement.style.setProperty("--text", "");
+      document.documentElement.style.setProperty("--accent", "");
+      return;
+    }
+    activeGameThemeId = theme.game_id;
+    document.body.style.backgroundColor = theme.background_color || "#111318";
+    document.body.style.color = theme.text_color || "#f5f5f5";
+    document.documentElement.style.setProperty("--text", theme.text_color || "#f5f5f5");
+    document.documentElement.style.setProperty("--accent", theme.accent_color || "#7c5cff");
+    const imageUrl = (theme.background_image_url || "").trim();
+    document.body.style.backgroundImage = imageUrl ? "linear-gradient(180deg,rgba(0,0,0,.22),rgba(0,0,0,.38)),url(" + JSON.stringify(imageUrl) + ")" : "";
+    document.body.style.backgroundSize = imageUrl ? "cover" : "";
+    document.body.style.backgroundAttachment = imageUrl ? "fixed" : "";
+  }
+  async function loadGameThemeDesigner() {
+    const select = $("gameThemeOwnedGame");
+    const collection = $("gameThemeCollection");
+    if (!select || !collection) return;
+    if (!currentUser || !sb) {
+      select.innerHTML = '<option value="">Sign in to load your games</option>';
+      select.disabled = true;
+      collection.innerHTML = '<p class="settings-note">Sign in to create themes and save unlocks to your account.</p>';
+      return;
+    }
+    select.disabled = false;
+    const [gamesResult, themesResult, unlocksResult] = await Promise.all([
+      sb.from("games").select("id,title,status").eq("creator_id", currentUser.id).order("created_at", {ascending:false}),
+      sb.from("game_theme_designs").select("*"),
+      sb.from("game_theme_unlocks").select("game_id,fresh_seconds,unlocked_at,is_active").eq("user_id", currentUser.id)
+    ]);
+    if (gamesResult.error || themesResult.error || unlocksResult.error) {
+      setGameThemeDesignerMessage((gamesResult.error || themesResult.error || unlocksResult.error).message, true);
+      return;
+    }
+    ownedThemeGames = gamesResult.data || [];
+    customGameThemes = (themesResult.data || []).filter(theme => ownedThemeGames.some(game => game.id === theme.game_id));
+    customGameThemeUnlocks = unlocksResult.data || [];
+    const previous = select.value;
+    select.innerHTML = '<option value="">Choose one of your games…</option>' + ownedThemeGames.map(game => '<option value="' + escapeHtml(game.id) + '">' + escapeHtml(game.title || "Untitled game") + (game.status === "published" ? "" : " (unpublished)") + '</option>').join("");
+    select.value = ownedThemeGames.some(game => game.id === previous) ? previous : "";
+    if (!select.value && ownedThemeGames.length) select.value = ownedThemeGames[0].id;
+    loadGameThemeIntoEditor();
+    renderGameThemeCollection();
+    const active = customGameThemeUnlocks.find(unlock => unlock.is_active && unlock.unlocked_at);
+    const activeTheme = active && customGameThemes.find(theme => theme.game_id === active.game_id);
+    if (activeTheme) applyCustomGameTheme(activeTheme);
+  }
+  function renderGameThemeCollection() {
+    const collection = $("gameThemeCollection");
+    if (!collection) return;
+    if (!customGameThemes.length) {
+      collection.innerHTML = '<p class="settings-note">No game themes yet. Choose one of your games above and save a theme.</p>';
+      return;
+    }
+    collection.innerHTML = customGameThemes.map(theme => {
+      const game = ownedThemeGames.find(item => item.id === theme.game_id);
+      const progress = customGameThemeUnlocks.find(item => item.game_id === theme.game_id);
+      const seconds = Math.min(60, Number(progress?.fresh_seconds || 0));
+      const unlocked = !!progress?.unlocked_at;
+      const active = !!progress?.is_active && unlocked;
+      const status = unlocked ? (active ? "✓ Unlocked · Active" : "✓ Unlocked") : "🔒 " + seconds + "/60 new seconds";
+      return '<article class="exclusive-theme-card"><div class="exclusive-theme-preview" style="background-color:' + escapeHtml(theme.background_color || "#111318") + ';background-image:' + (theme.background_image_url ? 'linear-gradient(0deg,rgba(0,0,0,.35),transparent),url(' + JSON.stringify(theme.background_image_url) + ')' : 'none') + '"></div><div class="exclusive-theme-body"><div class="theme-status ' + (unlocked ? "unlocked" : "") + '">' + status + '</div><h3>' + escapeHtml(theme.theme_name) + '</h3><p>For: ' + escapeHtml(game?.title || "Your game") + '</p><p class="small-note">' + (unlocked ? "Earned by playing this game for 60 new seconds." : "Play this game for " + (60-seconds) + " more new seconds. Existing playtime does not count.") + '</p><div class="theme-actions">' + (unlocked ? '<button class="primary" type="button" onclick="activateGameTheme(\'' + theme.game_id + '\')">' + (active ? "Theme Active" : "Use Theme") + '</button>' : '<button class="secondary" type="button" disabled>Locked until earned</button>') + '</div></div></article>';
+    }).join("");
+  }
+  async function saveGameThemeDesign() {
+    if (!currentUser || !sb) return setGameThemeDesignerMessage("Sign in first to save your theme.", true);
+    const gameId = $("gameThemeOwnedGame").value;
+    const game = ownedThemeGames.find(item => item.id === gameId);
+    if (!game) return setGameThemeDesignerMessage("Choose one of your own games first.", true);
+    const themeName = $("gameThemeName").value.trim();
+    const backgroundImage = $("gameThemeBackgroundImage").value.trim();
+    if (!themeName) return setGameThemeDesignerMessage("Enter a theme name.", true);
+    if (backgroundImage && !/^https?:\/\//i.test(backgroundImage)) return setGameThemeDesignerMessage("Background image must use an http or https URL.", true);
+    const payload = {game_id:gameId, creator_id:currentUser.id, theme_name:themeName, background_color:$("gameThemeBackground").value, text_color:$("gameThemeText").value, accent_color:$("gameThemeAccent").value, background_image_url:backgroundImage || null, updated_at:new Date().toISOString()};
+    const {error} = await sb.from("game_theme_designs").upsert(payload, {onConflict:"game_id"});
+    if (error) return setGameThemeDesignerMessage(error.message, true);
+    setGameThemeDesignerMessage("Theme saved! Everyone must play this game for 60 new seconds to unlock it.");
+    await loadGameThemeDesigner();
+  }
+  async function activateGameTheme(gameId) {
+    if (!currentUser || !sb) return;
+    const unlock = customGameThemeUnlocks.find(item => item.game_id === gameId && item.unlocked_at);
+    const theme = customGameThemes.find(item => item.game_id === gameId);
+    if (!unlock || !theme) return;
+    const {error: deactivateError} = await sb.from("game_theme_unlocks").update({is_active:false}).eq("user_id", currentUser.id).eq("is_active", true);
+    if (deactivateError) return setGameThemeDesignerMessage(deactivateError.message, true);
+    const {error} = await sb.from("game_theme_unlocks").update({is_active:true}).eq("user_id", currentUser.id).eq("game_id", gameId).not("unlocked_at","is",null);
+    if (error) return setGameThemeDesignerMessage(error.message, true);
+    customGameThemeUnlocks = customGameThemeUnlocks.map(item => ({...item, is_active:item.game_id === gameId && !!item.unlocked_at}));
+    applyCustomGameTheme(theme);
+    renderGameThemeCollection();
+    setGameThemeDesignerMessage("Theme applied!");
+  }
+  $("gameThemeOwnedGame")?.addEventListener("change", loadGameThemeIntoEditor);
+  $("saveGameTheme")?.addEventListener("click", saveGameThemeDesign);
+  $("clearGameTheme")?.addEventListener("click", clearGameThemeEditor);
+
   const LIGHT_MODE_KEY = "deluxeLightMode";
   function applyLightMode(enabled){
     document.body.classList.toggle("light-mode", !!enabled);
@@ -645,6 +799,7 @@ body.light-mode .pilot-welcome{color:#626d80}
       ? "Unlocked on your Deluxe account. This follows you when you sign in on another device."
       : "Unlock by playing SFOTH IV on the Deluxe Games page for at least 60 seconds.";
     if (message && !currentUser && !unlocked) message.textContent = "Sign in first so your unlock can be saved to your account.";
+    loadGameThemeDesigner().catch(error => { console.error("Could not load game themes:", error); setGameThemeDesignerMessage("Could not load your game themes.", true); });
   }
 
   async function saveExclusiveThemeUnlock(themeId){
