@@ -2294,12 +2294,12 @@ async function pollPresenceCards(){
  const friendIds=new Set((friendRows||[]).map(f=>f.friend_id));
  for(const elx of document.querySelectorAll("[id^='userPresence-']")){
   const id=elx.id.slice("userPresence-".length),p=map[id],online=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;
-  const game=p?.current_game_id?allPublishedGames.find(g=>g.id===p.current_game_id):null;
+  const game=p?.game||(p?.current_game_id?allPublishedGames.find(g=>g.id===p.current_game_id):null);
   elx.className="presence-pill"+(online?" online":"");
   elx.textContent=online?(game?"Online · "+game.title:"Online"):"Offline";
   if(friendIds.has(id)&&online&&presenceCache[id]===false)toast("Friend is online",elx.closest(".user-card")?.querySelector(".user-name")?.textContent||"A friend is now online.");
  }
- for(const id of friendIds){const p=map[id];const online=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;const e=el("friendPresence-"+id);if(e){e.className="presence-pill"+(online?" online":"");e.textContent=online?(p.current_game_id?"Online · playing a game":"Online"):"Offline"}if(!(id in presenceCache))presenceCache[id]=online;else if(presenceCache[id]===false&&online)toast("Friend is online","One of your friends just came online.");presenceCache[id]=online}
+ for(const id of friendIds){const p=map[id];const online=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;const e=el("friendPresence-"+id);if(e){e.className="presence-pill"+(online?" online":"");e.textContent=online?(p.game?.title?"Online · playing "+p.game.title:p.current_game_id?"Online · playing a game":"Online"):"Offline"}if(!(id in presenceCache))presenceCache[id]=online;else if(presenceCache[id]===false&&online)toast("Friend is online","One of your friends just came online.");presenceCache[id]=online}
 }
 window.refreshDeluxePresenceCards=pollPresenceCards;
 setInterval(pollPresenceCards,15000);
