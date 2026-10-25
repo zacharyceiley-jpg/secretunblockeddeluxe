@@ -1624,7 +1624,7 @@ flushDeluxePlayTracking();
       // Keep same-origin uploads isolated from the Deluxe page.
       frame.setAttribute("sandbox","allow-scripts allow-forms allow-popups allow-pointer-lock allow-downloads allow-modals");
     }
-    frame.onload=observeReadableGameText;
+    // Badge text observation was removed with the badges feature; do not call its deleted handler.
     frame.src=url;
     try{
       const response=await fetch(url,{mode:"cors",credentials:"omit",cache:"no-store"});
