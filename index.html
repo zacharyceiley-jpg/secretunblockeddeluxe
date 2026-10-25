@@ -837,6 +837,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     renderExclusiveThemeSettings();
     const message = $("exclusiveThemeMessage");
     if (message) message.textContent = "SFOTH theme unlocked and saved to your account!";
+    if (window.showDeluxeToast) window.showDeluxeToast("Theme unlocked!", "SFOTH theme is now available in Settings.");
     return true;
   }
 
@@ -1237,37 +1238,13 @@ body.light-mode .pilot-welcome{color:#626d80}
 
   async function loadUsers(){
     const grid = $("usersGrid");
-    if (!sb) {
-      grid.innerHTML = '<div class="loading">Connect Supabase to load users.</div>';
-      return;
-    }
-
+    if (!sb) { grid.innerHTML = '<div class="loading">Connect Supabase to load users.</div>'; return; }
     grid.innerHTML = '<div class="loading">Loading users…</div>';
-    const {data,error} = await sb
-      .from("profiles")
-      .select("id,username,avatar_url,bio")
-      .order("username");
-
-    if (error) {
-      grid.innerHTML = '<div class="loading">Unable to load users.</div>';
-      console.error(error);
-      return;
-    }
-
-    if (!data?.length) {
-      grid.innerHTML = '<div class="empty-state"><span>👥</span><h2>No users yet</h2><p>Create the first Deluxe account.</p></div>';
-      return;
-    }
-
-    grid.innerHTML = data.map(u => `
-      <article class="user-card" onclick="viewProfile('${u.id}')">
-        <div class="avatar">
-          ${u.avatar_url ? `<img src="${escapeHtml(u.avatar_url)}" alt="">` : escapeHtml(initials(u.username))}
-        </div>
-        <div class="user-name">${escapeHtml(u.username || "User")}</div>
-        <div class="role">Deluxe user</div>
-      </article>
-    `).join("");
+    const {data,error} = await sb.from("profiles").select("id,username,avatar_url,bio").order("username");
+    if(error){grid.innerHTML='<div class="loading">Unable to load users.</div>';console.error(error);return}
+    if(!data?.length){grid.innerHTML='<div class="empty-state"><span>👥</span><h2>No users yet</h2><p>Create the first Deluxe account.</p></div>';return}
+    grid.innerHTML=data.map(u=>'<article class="user-card" onclick="viewProfile(\''+u.id+'\')"><div class="avatar">'+(u.avatar_url?'<img src="'+escapeHtml(u.avatar_url)+'" alt="">':escapeHtml(initials(u.username)))+'</div><div class="user-name">'+escapeHtml(u.username||"User")+'</div><div class="role">Deluxe user</div><div class="presence-pill" id="userPresence-'+u.id+'">Checking status…</div>'+(currentUser&&u.id!==currentUser.id?'<div class="social-actions" style="margin-top:12px"><button class="secondary" onclick="event.stopPropagation();sendFriendRequest(\''+u.id+'\')">＋ Add friend</button><button class="secondary" onclick="event.stopPropagation();openFriendChat(\''+u.id+'\',\''+escapeHtml(u.username||"User").replace(/'/g,"&#039;")+'\')">Message</button></div>':"")+'</article>').join("");
+    if(window.refreshDeluxePresenceCards)window.refreshDeluxePresenceCards();
   }
 
   async function viewProfile(id){
