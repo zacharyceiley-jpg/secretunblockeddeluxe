@@ -2314,6 +2314,19 @@ function keepToastVisibleInFullscreen(){
 document.addEventListener("fullscreenchange",keepToastVisibleInFullscreen);
 
 function date(v){return new Date(v).toLocaleString()}
+// John Doe is a fictional Deluxe account. Keep his simulated status consistent
+// for the full March 18 day in the site's chosen timezone.
+function isJohnDoeFakeOnlineDay(){
+ const parts=new Intl.DateTimeFormat("en-AU",{timeZone:"Australia/Sydney",month:"numeric",day:"numeric"}).formatToParts(new Date());
+ const month=parts.find(p=>p.type==="month")?.value;
+ const day=parts.find(p=>p.type==="day")?.value;
+ return month==="3"&&day==="18";
+}
+function isJohnDoeStatusElement(statusEl){
+ const cardName=statusEl.closest(".user-card")?.querySelector(".user-name")?.textContent?.trim();
+ const rowName=statusEl.closest(".social-row")?.querySelector("strong")?.textContent?.trim();
+ return (cardName||rowName||"").toLowerCase()==="john doe";
+}
 async function presence(){if(!sb||!currentUser)return;const {error}=await sb.from("user_presence").upsert({user_id:currentUser.id,online:true,current_game_id:(document.getElementById("gamePage")?.classList.contains("active")?currentGame?.id:null),updated_at:new Date().toISOString()});if(error)console.warn(error.message)}
 const presenceCache={};
 async function pollPresenceCards(){
@@ -2324,13 +2337,16 @@ async function pollPresenceCards(){
  const {data:friendRows}=await sb.from("friendships").select("friend_id").eq("user_id",currentUser.id);
  const friendIds=new Set((friendRows||[]).map(f=>f.friend_id));
  for(const elx of document.querySelectorAll("[id^='userPresence-']")){
-  const id=elx.id.slice("userPresence-".length),p=map[id],online=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;
+  const id=elx.id.slice("userPresence-".length),p=map[id];
+  const realOnline=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;
+  const fakeOnline=isJohnDoeStatusElement(elx)&&isJohnDoeFakeOnlineDay();
+  const online=realOnline||fakeOnline;
   const game=p?.game||(p?.current_game_id?allPublishedGames.find(g=>g.id===p.current_game_id):null);
   elx.className="presence-pill"+(online?" online":"");
-  elx.textContent=online?(game?"Online · "+game.title:"Online"):"Offline";
+  elx.textContent=online?(fakeOnline?"Online":(game?"Online · "+game.title:"Online")):"Offline";
 
  }
- for(const id of friendIds){const p=map[id];const online=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;const e=el("friendPresence-"+id);if(e){e.className="presence-pill"+(online?" online":"");e.textContent=online?(p.game?.title?"Online · playing "+p.game.title:p.current_game_id?"Online · playing a game":"Online"):"Offline"}if(!(id in presenceCache))presenceCache[id]=online;else if(presenceCache[id]===false&&online)toast("Friend is online","One of your friends just came online.");presenceCache[id]=online}
+ for(const id of friendIds){const p=map[id];const e=el("friendPresence-"+id);const fakeOnline=!!e&&isJohnDoeStatusElement(e)&&isJohnDoeFakeOnlineDay();const realOnline=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;const online=realOnline||fakeOnline;if(e){e.className="presence-pill"+(online?" online":"");e.textContent=online?(fakeOnline?"Online":(p.game?.title?"Online · playing "+p.game.title:p.current_game_id?"Online · playing a game":"Online")):"Offline"}if(!(id in presenceCache))presenceCache[id]=online;else if(presenceCache[id]===false&&online)toast("Friend is online","One of your friends just came online.");presenceCache[id]=online}
 }
 window.refreshDeluxePresenceCards=pollPresenceCards;
 setInterval(pollPresenceCards,15000);
