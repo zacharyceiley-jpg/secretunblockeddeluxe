@@ -120,7 +120,10 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
     .game-detail-layout{display:grid;grid-template-columns:minmax(180px,300px) minmax(0,1fr);gap:24px;align-items:start}
     .game-detail-thumbnail{width:100%;aspect-ratio:1/1;object-fit:cover;border-radius:16px;background:var(--panel);border:1px solid var(--line)}
     .game-detail-description{color:var(--muted);line-height:1.65;white-space:pre-wrap}
-    .game-tag{display:inline-flex;padding:5px 9px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted);margin:3px 5px 3px 0}
+    .game-tag{display:inline-flex;align-items:center;padding:7px 11px;border:1px solid rgba(154,131,255,.55);border-radius:999px;font-size:12px;font-weight:750;letter-spacing:.02em;color:#e5ddff;background:rgba(124,92,255,.18);margin:3px 5px 3px 0;box-shadow:inset 0 0 0 1px rgba(124,92,255,.06)}
+    .game-genres-label{display:block;color:var(--accent2);font-size:11px;font-weight:850;letter-spacing:.12em;text-transform:uppercase;margin:16px 0 7px}
+    .game-genres-list{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 12px}
+    .game-genre-editor-note{font-size:12px;color:var(--muted);line-height:1.45;margin-top:6px}
     @media(max-width:620px){.game-detail-layout{grid-template-columns:1fr}.game-detail-thumbnail{max-width:240px}}
     .admin-status{display:inline-block;padding:4px 8px;border:1px solid var(--line);border-radius:999px;font-size:12px;color:var(--muted)}
     .admin-row{padding:12px 0;border-bottom:1px solid var(--line)}
@@ -358,6 +361,9 @@ body.light-mode .pilot-welcome{color:#626d80}
           <input id="gameTitle" type="text" maxlength="90" required placeholder="My awesome game">
           <label class="small-note" for="gameDescription">Description</label>
           <textarea id="gameDescription" rows="3" maxlength="600" placeholder="What is your game about?"></textarea>
+          <label class="small-note" for="gameGenres">Genres</label>
+          <input id="gameGenres" type="text" maxlength="240" placeholder="Action, Tower Defense, Multiplayer">
+          <p class="game-genre-editor-note">Add up to 10 genres, separated by commas. They appear as visible tags on your game page.</p>
           <label class="small-note" for="gameAgeRecommendation">Age recommendation</label>
           <select id="gameAgeRecommendation">
             <option value="">Not specified</option>
@@ -1375,17 +1381,25 @@ body.light-mode .pilot-welcome{color:#626d80}
       <div class="game-thumb">${thumb}</div><div class="game-card-body"><div class="game-title">${title}</div>
       <div class="game-card-actions"><button class="primary" onclick="event.stopPropagation();openGameDetails('${g.id}')">View game</button></div></div></article>`;
   }
+  function getGameGenres(game) {
+    const raw = Array.isArray(game?.genres) ? game.genres : (Array.isArray(game?.tags) ? game.tags : []);
+    return [...new Set(raw.map(value => String(value).trim()).filter(Boolean))].slice(0, 10);
+  }
+  function parseGameGenres(value) {
+    return [...new Set(String(value || "").split(",").map(tag => tag.trim()).filter(Boolean))].slice(0, 10);
+  }
+
   function openGameDetails(id) {
     const g = allPublishedGames.find(item => item.id === id);
     if (!g) return;
     const thumb = g.thumbnail_url && validGameUrl(g.thumbnail_url) ? `<img class="game-detail-thumbnail" src="${escapeHtml(g.thumbnail_url)}" alt="${escapeHtml(g.title || "Game")} thumbnail">` : `<div class="game-detail-thumbnail" style="display:grid;place-items:center;font-size:64px">🎮</div>`;
-    const genres = Array.isArray(g.genres) ? g.genres : (Array.isArray(g.tags) ? g.tags : []);
+    const genres = getGameGenres(g);
     const tags = genres.map(tag => `<span class="game-tag">${escapeHtml(tag)}</span>`).join("");
     const age = g.age_recommendation || g.age_rating || "Not specified";
     const editButton = currentUser && g.creator_id === currentUser.id ? ` <button class="secondary game-title-edit" type="button" title="Edit this game" aria-label="Edit this game" onclick="editMyGame('${g.id}')">✎</button>` : "";
     $("gameDetailRoot").innerHTML = `<div class="page-title"><button class="secondary" onclick="showPage('games')">← Back to games</button><p class="eyebrow" style="margin-top:18px">GAME DETAILS</p><h1 style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">${escapeHtml(g.title || "Untitled Game")}${editButton}</h1></div>
       <div class="game-detail-layout">${thumb}<div><h2>${escapeHtml(g.title || "Untitled Game")}</h2><p class="game-detail-description">${escapeHtml(g.description || "No description has been added yet.")}</p>
-      <div>${tags || '<span class="game-tag">Genre not set</span>'}</div><p class="game-meta">Age recommendation: ${escapeHtml(age)}</p>
+      <span class="game-genres-label">Genres</span><div class="game-genres-list">${tags || '<span class="game-tag">No genres added</span>'}</div><p class="game-meta">Age recommendation: ${escapeHtml(age)}</p>
       <p class="game-meta">Created by ${escapeHtml(g.profiles?.username || "Unknown creator")}</p><div class="game-card-actions"><button class="primary" onclick="playGameFromDetails('${g.id}')">▶ Play</button></div></div></div>`;
     showPage("gameDetail");
   }
@@ -1482,6 +1496,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     const age_recommendation=$("gameAgeRecommendation").value;
     const thumbnail_url=$("gameThumbnail").value.trim();
     const icon_url=$("gameIcon").value.trim();
+    const tags=parseGameGenres($("gameGenres").value);
     const game_url=$("gameUrl").value.trim();
     if(!title) return setGameFormMessage("Enter a game title.",true);
     if(!validGameUrl(game_url)) return setGameFormMessage("Enter a valid HTTP or HTTPS game URL.",true);
@@ -1489,7 +1504,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if(icon_url && !validGameUrl(icon_url)) return setGameFormMessage("The icon URL must be HTTP or HTTPS.",true);
     $("submitGameButton").disabled=true;
     setGameFormMessage("Submitting game…");
-    const {error}=await sb.from("games").insert({creator_id:currentUser.id,title,description,age_recommendation:age_recommendation||null,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,status:"pending"});
+    const {error}=await sb.from("games").insert({creator_id:currentUser.id,title,description,tags,age_recommendation:age_recommendation||null,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,status:"pending"});
     $("submitGameButton").disabled=false;
     if(error){console.error(error);return setGameFormMessage(error.message,true);}
     $("gameForm").reset();
@@ -1517,6 +1532,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("submitGameButton").textContent = "Save changes";
     $("gameTitle").value = game.title || "";
     $("gameDescription").value = game.description || "";
+    $("gameGenres").value = getGameGenres(game).join(", ");
     $("gameAgeRecommendation").value = game.age_recommendation || game.age_rating || "";
     $("gameThumbnail").value = game.thumbnail_url || "";
     $("gameIcon").value = game.icon_url || "";
@@ -1534,6 +1550,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("submitGameButton").textContent = "Submit game";
     $("gameForm")?.reset();
     $("gameChatEnabled").checked = true;
+    $("gameGenres").value = "";
     $("gameAgeRecommendation").value = "";
     $("gameFormMessage").textContent = "";
   }
@@ -1544,6 +1561,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     const age_recommendation = $("gameAgeRecommendation").value;
     const thumbnail_url = $("gameThumbnail").value.trim();
     const icon_url = $("gameIcon").value.trim();
+    const tags = parseGameGenres($("gameGenres").value);
     const game_url = $("gameUrl").value.trim();
     if (!title) return setGameFormMessage("Enter a game title.", true);
     if (!validGameUrl(game_url)) return setGameFormMessage("Enter a valid HTTP or HTTPS game URL.", true);
@@ -1551,7 +1569,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (icon_url && !validGameUrl(icon_url)) return setGameFormMessage("The icon URL must be HTTP or HTTPS.", true);
     $("submitGameButton").disabled=true;
     setGameFormMessage("Saving changes…");
-    const {error} = await sb.from("games").update({title,description,age_recommendation:age_recommendation||null,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,updated_at:new Date().toISOString()}).eq("id",id).eq("creator_id",currentUser.id);
+    const {error} = await sb.from("games").update({title,description,tags,age_recommendation:age_recommendation||null,thumbnail_url:thumbnail_url||null,icon_url:icon_url||null,game_url,chat_enabled:$("gameChatEnabled").checked,updated_at:new Date().toISOString()}).eq("id",id).eq("creator_id",currentUser.id);
     $("submitGameButton").disabled=false;
     if (error) return setGameFormMessage(error.message,true);
     $("gameUploader").classList.add("hidden");
