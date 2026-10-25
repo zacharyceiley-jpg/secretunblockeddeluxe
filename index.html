@@ -924,16 +924,13 @@ body.light-mode .pilot-welcome{color:#626d80}
       updateUnreadBadgeUI();
       return;
     }
-    const {count,error} = await sb.from("messages")
-      .select("id",{count:"exact",head:true})
-      .eq("recipient_id",currentUser.id)
-      .is("game_id",null)
-      .is("read_at",null);
-    if (error) {
-      console.error("Unread message check:", error);
-      return;
-    }
-    unreadMessageCount = count || 0;
+    const [{count:messageCount,error:messageError},{count:notificationCount,error:notificationError}] = await Promise.all([
+      sb.from("messages").select("id",{count:"exact",head:true}).eq("recipient_id",currentUser.id).is("game_id",null).is("read_at",null),
+      sb.from("deluxe_notifications").select("id",{count:"exact",head:true}).eq("user_id",currentUser.id).is("read_at",null)
+    ]);
+    if (messageError) console.error("Unread message check:", messageError);
+    if (notificationError) console.error("Unread notification check:", notificationError);
+    unreadMessageCount = (messageCount || 0) + (notificationError ? 0 : (notificationCount || 0));
     updateUnreadBadgeUI();
   }
 
@@ -948,35 +945,51 @@ body.light-mode .pilot-welcome{color:#626d80}
     }
 
     list.innerHTML = '<div class="loading">Loading messages…</div>';
-    const {data,error} = await sb.from("messages")
-      .select("id,sender_id,content,created_at,read_at,sender:profiles!messages_sender_id_fkey(username)")
-      .eq("recipient_id",currentUser.id)
-      .is("game_id",null)
-      .order("created_at",{ascending:false})
-      .limit(100);
+    const [{data,error},{data:notifications, error:notificationError}] = await Promise.all([
+      sb.from("messages")
+        .select("id,sender_id,content,created_at,read_at,sender:profiles!messages_sender_id_fkey(username)")
+        .eq("recipient_id",currentUser.id).is("game_id",null).order("created_at",{ascending:false}).limit(100),
+      sb.from("deluxe_notifications")
+        .select("id,title,body,kind,created_at,read_at")
+        .eq("user_id",currentUser.id).order("created_at",{ascending:false}).limit(100)
+    ]);
 
     if (error) {
       console.error(error);
       list.innerHTML = `<div class="empty-state"><span>⚠️</span><h2>Unable to load inbox</h2><p>${escapeHtml(error.message)}</p></div>`;
       return;
     }
+    if (notificationError) console.error("Notification inbox:", notificationError);
 
     const messages = data || [];
-    $("inboxStatus").textContent = `${messages.filter(m=>!m.read_at).length} unread · ${messages.length} total`;
+    const notices = notifications || [];
+    const unreadTotal = messages.filter(m=>!m.read_at).length + notices.filter(n=>!n.read_at).length;
+    const total = messages.length + notices.length;
+    $("inboxStatus").textContent = `${unreadTotal} unread · ${total} total`;
 
-    if (!messages.length) {
-      list.innerHTML = '<div class="empty-state"><span>📭</span><h2>No messages yet</h2><p>Admin messages will appear here.</p></div>';
+    if (!total) {
+      list.innerHTML = '<div class="empty-state"><span>📭</span><h2>No messages yet</h2><p>Admin messages and Deluxe notifications will appear here.</p></div>';
       await updateUnreadBadge();
       return;
     }
 
-    list.innerHTML = messages.map(m => `
-      <article class="inbox-message ${m.read_at ? "" : "unread"}" onclick="openInboxMessage('${m.id}')">
+    const messageCards = messages.map(m => ({
+      id:m.id, type:"message", unread:!m.read_at, title:m.sender?.username || "Administrator",
+      body:m.content, created_at:m.created_at
+    }));
+    const noticeCards = notices.map(n => ({
+      id:n.id, type:"notification", unread:!n.read_at, title:n.title || "Secret Unblocked Deluxe",
+      body:n.body, kind:n.kind, created_at:n.created_at
+    }));
+    const cards = [...messageCards,...noticeCards].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));
+    list.innerHTML = cards.map(item => `
+      <article class="inbox-message ${item.unread ? "unread" : ""}" onclick="${item.type==="notification" ? `openDeluxeNotification('${item.id}')` : `openInboxMessage('${item.id}')`}">
         <div class="inbox-message-head">
-          <strong>${m.read_at ? "" : '<span class="inbox-dot"></span>'}${escapeHtml(m.sender?.username || "Administrator")}</strong>
-          <span class="inbox-message-time">${escapeHtml(new Date(m.created_at).toLocaleString())}</span>
+          <strong>${item.unread ? '<span class="inbox-dot"></span>' : ''}${item.type==="notification" ? '🔔 ' : '✉️ '}${escapeHtml(item.title)}</strong>
+          <span class="inbox-message-time">${escapeHtml(new Date(item.created_at).toLocaleString())}</span>
         </div>
-        <div class="inbox-message-preview">${escapeHtml(m.content)}</div>
+        <div class="inbox-message-preview">${escapeHtml(item.body)}</div>
+        ${item.type==="notification" ? '<span class="small-note">Deluxe notification</span>' : ''}
       </article>
     `).join("");
 
@@ -1004,6 +1017,22 @@ body.light-mode .pilot-welcome{color:#626d80}
     }
 
     alert(`${data.sender?.username || "Administrator"} wrote:\\n\\n${data.content}`);
+    await loadInbox();
+  }
+
+  async function openDeluxeNotification(id){
+    if (!sb || !currentUser) return;
+    const {data,error} = await sb.from("deluxe_notifications")
+      .select("id,title,body,created_at,read_at")
+      .eq("id",id).eq("user_id",currentUser.id).maybeSingle();
+    if (error || !data) return alert(error?.message || "Notification not found.");
+    if (!data.read_at) {
+      const {error:readError} = await sb.from("deluxe_notifications")
+        .update({read_at:new Date().toISOString()})
+        .eq("id",id).eq("user_id",currentUser.id);
+      if (readError) console.error("Could not mark notification read:",readError);
+    }
+    alert(`${data.title || "Secret Unblocked Deluxe"}\\n\\n${data.body}`);
     await loadInbox();
   }
 
