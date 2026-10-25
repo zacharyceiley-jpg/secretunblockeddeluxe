@@ -1572,6 +1572,8 @@ body.light-mode .pilot-welcome{color:#626d80}
 
   async function openGame(id){
     deluxeDetectedScreenText="";
+    if(deluxeGameTextObserver){deluxeGameTextObserver.disconnect();deluxeGameTextObserver=null;}
+    deluxeObservedGameDocument=null;
     if (!sb) return;
     const {data,error} = await sb.from("games").select("id,title,description,thumbnail_url,icon_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)").eq("id",id).maybeSingle();
     if (error || !data) return alert(error?.message || "Game not found.");
@@ -1599,6 +1601,8 @@ body.light-mode .pilot-welcome{color:#626d80}
 
   function leaveGame(){
     deluxeDetectedScreenText="";
+    if(deluxeGameTextObserver){deluxeGameTextObserver.disconnect();deluxeGameTextObserver=null;}
+    deluxeObservedGameDocument=null;
     flushDeluxePlayTracking();
     deluxePlayTrackingId = null;
     deluxePlayTrackingStarted = 0;
@@ -1627,6 +1631,7 @@ body.light-mode .pilot-welcome{color:#626d80}
       // Keep same-origin uploads isolated from the Deluxe page.
       frame.setAttribute("sandbox","allow-scripts allow-forms allow-popups allow-pointer-lock allow-downloads allow-modals");
     }
+    frame.onload=observeReadableGameText;
     frame.src=url;
     try{
       const response=await fetch(url,{mode:"cors",credentials:"omit",cache:"no-store"});
@@ -2397,21 +2402,54 @@ window.deleteGameBadge=async(id)=>{
   await showDeluxeBadges();
 };
 let deluxeDetectedScreenText="";
+let deluxeGameTextObserver=null;
+let deluxeObservedGameDocument=null;
 function captureDeluxeBadgeText(text){
   if(typeof text!=="string"||!text.trim())return;
   deluxeDetectedScreenText=(text+" "+deluxeDetectedScreenText).slice(0,50000);
 }
+function captureDeluxeBadgeMessage(data){
+  if(!data||typeof data!=="object")return;
+  if(data.type==="DELUXE_BADGE_TEXT"&&typeof data.text==="string"){
+    captureDeluxeBadgeText(data.text);
+    return;
+  }
+  if(data.type==="DELUXE_BADGE_TEXT"&&Array.isArray(data.text)){
+    for(const item of data.text)if(typeof item==="string")captureDeluxeBadgeText(item);
+  }
+}
 window.addEventListener("message",event=>{
   const frame=$("activeGameFrame");
-  if(!frame||event.source!==frame.contentWindow||!event.data||typeof event.data!=="object")return;
-  if(event.data.type==="DELUXE_BADGE_TEXT"&&typeof event.data.text==="string")captureDeluxeBadgeText(event.data.text);
+  // Only accept badge text sent by the currently active game iframe.
+  if(!frame||event.source!==frame.contentWindow)return;
+  captureDeluxeBadgeMessage(event.data);
 });
+function observeReadableGameText(){
+  const frame=$("activeGameFrame");
+  if(!frame)return;
+  if(deluxeGameTextObserver){deluxeGameTextObserver.disconnect();deluxeGameTextObserver=null;}
+  deluxeObservedGameDocument=null;
+  try{
+    const doc=frame.contentDocument;
+    if(!doc?.body)return;
+    deluxeObservedGameDocument=doc;
+    const scan=()=>captureDeluxeBadgeText(doc.body?.innerText||doc.body?.textContent||"");
+    scan();
+    if(typeof MutationObserver!=="undefined"){
+      deluxeGameTextObserver=new MutationObserver(scan);
+      deluxeGameTextObserver.observe(doc.body,{subtree:true,childList:true,characterData:true});
+    }
+  }catch(_){/* Cross-origin or isolated frames must send the integration message. */}
+}
 function scanReadableGameText(){
   const frame=$("activeGameFrame");
   try{
     const doc=frame?.contentDocument;
-    if(doc?.body)captureDeluxeBadgeText(doc.body.innerText||doc.body.textContent||"");
-  }catch(_){/* Cross-origin games must explicitly send the integration message. */}
+    if(doc?.body){
+      if(deluxeObservedGameDocument!==doc)observeReadableGameText();
+      else captureDeluxeBadgeText(doc.body.innerText||doc.body.textContent||"");
+    }
+  }catch(_){/* Cross-origin or isolated frames must send the integration message. */}
 }
 async function checkCurrentGameBadges(){
   if(!sb||!currentUser||!currentGame||!el("gamePage")?.classList.contains("active"))return;
