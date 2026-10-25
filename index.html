@@ -2287,7 +2287,7 @@ async function presence(){if(!sb||!currentUser)return;const {error}=await sb.fro
 const presenceCache={};
 async function pollPresenceCards(){
  if(!sb||!currentUser)return;
- const {data:rows,error}=await sb.from("user_presence").select("user_id,online,current_game_id,updated_at");
+ const {data:rows,error}=await sb.from("user_presence").select("user_id,online,current_game_id,updated_at,game:games(title)");
  if(error)return;
  const map={};(rows||[]).forEach(p=>map[p.user_id]=p);
  const {data:friendRows}=await sb.from("friendships").select("friend_id").eq("user_id",currentUser.id);
