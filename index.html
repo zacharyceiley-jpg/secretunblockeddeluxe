@@ -332,6 +332,7 @@ body.light-mode .pilot-welcome{color:#626d80}
         <input id="gameSearch" class="game-search" type="search" placeholder="Search games…" style="flex:1;min-width:190px">
         <button class="primary" id="openGameUploader" type="button" title="Add a game" aria-label="Add a game">＋ Add game</button>
         <button class="secondary" type="button" onclick="showDeluxePlaytime()">⏱ Playtime</button>
+        <button class="secondary" type="button" onclick="showDeluxeBadges()">🏅 Badges</button>
       </div>
       <div class="game-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px">
         <label for="preferredGenres" class="small-note">Recommend genres:</label>
@@ -1388,7 +1389,6 @@ body.light-mode .pilot-welcome{color:#626d80}
       <div>${tags || '<span class="game-tag">Genre not set</span>'}</div><p class="game-meta">Age recommendation: ${escapeHtml(age)}</p>
       <p class="game-meta">Created by ${escapeHtml(g.profiles?.username || "Unknown creator")}</p><div class="game-card-actions"><button class="primary" onclick="playGameFromDetails('${g.id}')">▶ Play</button></div></div></div>`;
     showPage("gameDetail");
-    loadGameBadges(id).catch(err=>console.error("Badge loading:",err));
   }
 
   function playGameFromDetails(id) {
@@ -2337,8 +2337,63 @@ el("groupChatForm")?.addEventListener("submit",async e=>{e.preventDefault();cons
 async function messages(){if(!currentUser)return;const {data,error}=await sb.from("community_messages").select("id,channel,sender_id,content,created_at,profiles!community_messages_sender_id_fkey(username)").eq("channel",channel).order("created_at",{ascending:false}).limit(80);if(error){el("communityFeed").innerHTML='<p class="social-muted">Channel restricted or unavailable.</p>';el("communityPostForm").classList.toggle("hidden",channel==="admins"||channel==="news"||currentRole!=="admin");return}el("communityChannelTitle").textContent="# "+channel;el("communityChannelHint").textContent=channel==="news"?"Announcements posted by admins.":channel==="admins"?"Admins and their friends; admins only can post.":channel==="bugs"?"Report bugs and site issues.":"General community chat.";el("communityPostForm").classList.toggle("hidden",(channel==="admins"||channel==="news")&&currentRole!=="admin");el("communityFeed").innerHTML=(data||[]).reverse().map(m=>'<div class="social-post"><strong>'+escapeHtml(m.profiles?.username||"User")+'</strong><small class="social-muted"> · '+escapeHtml(date(m.created_at))+'</small><p>'+escapeHtml(m.content)+'</p></div>').join("")||'<p class="social-muted">No messages yet.</p>'}
 document.querySelectorAll("[data-channel]").forEach(b=>b.addEventListener("click",async()=>{channel=b.dataset.channel;document.querySelectorAll("[data-channel]").forEach(x=>x.classList.toggle("active",x===b));await messages()}));
 el("communityPostForm")?.addEventListener("submit",async e=>{e.preventDefault();const content=el("communityPostInput").value.trim();if(!content)return;const {error}=await sb.from("community_messages").insert({channel,sender_id:currentUser.id,content});if(error)return alert(error.message);el("communityPostInput").value="";await messages()});
-window.loadGameBadges=async gameId=>{const root=el("gameDetailRoot");if(!root||!sb)return;let p=el("gameBadgesPanel");if(!p){p=document.createElement("section");p.id="gameBadgesPanel";p.className="social-panel";p.style.marginTop="24px";root.appendChild(p)}p.innerHTML='<h2>🏅 Game badges</h2><p class="social-muted">Loading badges…</p>';const {data:badges,error}=await sb.from("deluxe_badges").select("*").eq("game_id",gameId).order("created_at");if(error){p.innerHTML='<h2>🏅 Game badges</h2><p class="social-muted">'+escapeHtml(error.message)+'</p>';return}const game=allPublishedGames.find(g=>g.id===gameId),canCreate=!!currentUser&&game?.creator_id===currentUser.id;const {data:owned}=currentUser?await sb.from("user_badges").select("badge_id").eq("user_id",currentUser.id):{data:[]};const ownedIds=new Set((owned||[]).map(x=>x.badge_id));p.innerHTML='<h2>🏅 Game badges</h2><p class="social-muted">Search badges and see which ones you have earned.</p><input id="badgeSearchInput" class="social-input" placeholder="Search badges…"><div id="gameBadgeGrid" class="social-badge-grid"></div>'+(canCreate?'<details><summary style="cursor:pointer;font-weight:700">＋ Create badge</summary><form id="createBadgeForm" style="margin-top:12px"><label>Badge name<input id="badgeName" class="social-input" maxlength="50" required></label><label>Image URL<input id="badgeImage" class="social-input" type="url" required placeholder="https://…"></label><label>Requirement description<textarea id="badgeDescription" class="social-textarea" maxlength="300"></textarea></label><label>Condition<select id="badgeCondition" class="social-select"><option value="time_played">Time played (automatic)</option><option value="text_on_screen">Text appears on screen</option><option value="color_on_screen">Colour appears on screen</option><option value="image_on_screen">Image appears on screen</option></select></label><label>Required playtime in seconds<input id="badgeSeconds" class="social-input" type="number" min="0" value="60" required></label><label>Condition text / colour / image<input id="badgeConditionValue" class="social-input" maxlength="250"></label><button class="primary" type="submit">Create badge</button><p class="social-muted">Screen-based conditions need the game itself to integrate with Deluxe; third-party embedded games cannot be reliably inspected automatically.</p></form></details>':"");function draw(q){q=(q||"").toLowerCase();const found=(badges||[]).filter(b=>(b.name+" "+b.description).toLowerCase().includes(q));el("gameBadgeGrid").innerHTML=found.map(b=>'<article class="social-badge '+(ownedIds.has(b.id)?"owned":"")+'"><img src="'+escapeHtml(b.image_url)+'" alt=""><h3>'+escapeHtml(b.name)+'</h3><p class="social-muted">'+escapeHtml(b.description||"")+'</p><span class="social-muted">'+(ownedIds.has(b.id)?"✓ Owned":b.condition_type==="time_played"?"Not earned":"Requirement set")+'</span>'+(canCreate?'<button class="secondary" style="margin-top:8px" onclick="deleteGameBadge(\''+b.id+'\',\''+gameId+'\')">Delete</button>':"")+'</article>').join("")||'<p class="social-muted">No matching badges.</p>'}draw("");el("badgeSearchInput").addEventListener("input",e=>draw(e.target.value));if(canCreate)el("createBadgeForm").addEventListener("submit",async e=>{e.preventDefault();const image_url=el("badgeImage").value.trim();if(!validGameUrl(image_url))return alert("Enter a valid image URL.");const row={game_id:gameId,creator_id:currentUser.id,name:el("badgeName").value.trim(),image_url,description:el("badgeDescription").value.trim(),condition_type:el("badgeCondition").value,requirement_seconds:Number(el("badgeSeconds").value)||0,condition_value:el("badgeConditionValue").value.trim()};const {error}=await sb.from("deluxe_badges").insert(row);if(error)return alert(error.message);toast("Badge created",row.name+" is now on this game.");await loadGameBadges(gameId)});if(currentUser){const {data:play}=await sb.from("game_playtime").select("seconds").eq("user_id",currentUser.id).eq("game_id",gameId).maybeSingle();const seconds=Number(play?.seconds||0)+((deluxePlayTrackingId===gameId&&deluxePlayTrackingStarted)?Math.floor((Date.now()-deluxePlayTrackingStarted)/1000):0);for(const b of (badges||[])){if(b.condition_type==="time_played"&&seconds>=Number(b.requirement_seconds||0)&&!ownedIds.has(b.id)){const {error:awardError}=await sb.from("user_badges").insert({user_id:currentUser.id,badge_id:b.id});if(!awardError){ownedIds.add(b.id);toast("Badge unlocked!",b.name);}}}draw(el("badgeSearchInput").value)}};
-window.deleteGameBadge=async(id,gameId)=>{if(!confirm("Delete this badge?"))return;const {error}=await sb.from("deluxe_badges").delete().eq("id",id).eq("creator_id",currentUser.id);if(error)return alert(error.message);toast("Badge deleted","The badge was removed.");await loadGameBadges(gameId)};
+window.showDeluxeBadges=async function(){
+    const root=$("gameDetailRoot");
+    if(!root||!sb)return;
+    root.innerHTML='<div class="page-title"><button class="secondary" onclick="showPage(\'games\')">← Back to games</button><p class="eyebrow" style="margin-top:18px">YOUR COLLECTION</p><h1>🏅 Badges</h1><p>Browse badges from every game in one place. Each badge shows the game it belongs to.</p></div><section class="social-panel"><input id="badgeSearchInput" class="social-input" placeholder="Search badges or games…"><div id="gameBadgeGrid" class="social-badge-grid"><p class="social-muted">Loading badges…</p></div><div id="badgeCreateArea"></div></section>';
+    showPage("gameDetail");
+    const [{data:badges,error},{data:owned,error:ownedError}]=await Promise.all([
+      sb.from("deluxe_badges").select("*").order("created_at",{ascending:false}),
+      currentUser?sb.from("user_badges").select("badge_id").eq("user_id",currentUser.id):Promise.resolve({data:[],error:null})
+    ]);
+    const grid=$("gameBadgeGrid");
+    if(error){grid.innerHTML='<p class="social-muted">'+escapeHtml(error.message)+'</p>';return}
+    if(ownedError)console.warn("Could not load owned badges:",ownedError);
+    const ownedIds=new Set((owned||[]).map(x=>x.badge_id));
+    const badgeRows=badges||[];
+    const ownedGames=allPublishedGames.filter(g=>currentUser&&g.creator_id===currentUser.id);
+    const createArea=$("badgeCreateArea");
+    if(currentUser){
+      createArea.innerHTML='<details style="margin-top:20px"><summary style="cursor:pointer;font-weight:700">＋ Create a badge for one of your games</summary><form id="createBadgeForm" style="margin-top:12px;display:grid;gap:10px"><label>Game<select id="badgeGameId" class="social-select" required><option value="">Choose your game…</option>'+ownedGames.map(g=>'<option value="'+escapeHtml(g.id)+'">'+escapeHtml(g.title||"Untitled Game")+'</option>').join("")+'</select></label><label>Badge name<input id="badgeName" class="social-input" maxlength="50" required></label><label>Image URL<input id="badgeImage" class="social-input" type="url" required placeholder="https://…"></label><label>Requirement description<textarea id="badgeDescription" class="social-textarea" maxlength="300" placeholder="What does the player need to do?"></textarea></label><label>Condition<select id="badgeCondition" class="social-select"><option value="time_played">Time played (automatic)</option><option value="text_on_screen">Text appears on screen</option><option value="color_on_screen">Colour appears on screen</option><option value="image_on_screen">Image appears on screen</option></select></label><label>Required playtime in seconds<input id="badgeSeconds" class="social-input" type="number" min="0" value="60" required></label><label>Condition text / colour / image<input id="badgeConditionValue" class="social-input" maxlength="250"></label><button class="primary" type="submit">Create badge</button><p class="social-muted">Screen-based conditions need the game itself to integrate with Deluxe; third-party embedded games cannot be reliably inspected automatically.</p></form></details>';
+      if(!ownedGames.length)createArea.insertAdjacentHTML("afterbegin",'<p class="social-muted">Publish a game first to create badges for it.</p>');
+    }else{
+      createArea.innerHTML='<p class="social-muted" style="margin-top:18px">Sign in to create badges for games you published.</p>';
+    }
+    function draw(q=""){
+      q=String(q||"").toLowerCase();
+      const found=badgeRows.filter(b=>{
+        const game=allPublishedGames.find(g=>g.id===b.game_id);
+        return (String(b.name||"")+" "+String(b.description||"")+" "+String(game?.title||"")).toLowerCase().includes(q);
+      });
+      grid.innerHTML=found.map(b=>{
+        const game=allPublishedGames.find(g=>g.id===b.game_id);
+        const isOwner=!!currentUser&&game?.creator_id===currentUser.id;
+        return '<article class="social-badge '+(ownedIds.has(b.id)?"owned":"")+'"><img src="'+escapeHtml(b.image_url||"")+'" alt=""><h3>'+escapeHtml(b.name||"Badge")+'</h3><p class="social-muted">'+escapeHtml(b.description||"No requirement description.")+'</p><p class="social-muted">🎮 From: <strong>'+escapeHtml(game?.title||"Unknown game")+'</strong></p><span class="social-muted">'+(ownedIds.has(b.id)?"✓ Earned":b.condition_type==="time_played"?"Not earned":"Requirement set")+'</span>'+(isOwner?'<button class="secondary" style="margin-top:8px" onclick="deleteGameBadge(\''+b.id+'\')">Delete</button>':"")+'</article>';
+      }).join("")||'<p class="social-muted">No badges found.</p>';
+    }
+    draw();
+    $("badgeSearchInput").addEventListener("input",e=>draw(e.target.value));
+    $("createBadgeForm")?.addEventListener("submit",async e=>{
+      e.preventDefault();
+      const gameId=$("badgeGameId").value;
+      const game=ownedGames.find(g=>g.id===gameId);
+      if(!game)return alert("Choose one of your published games.");
+      const image_url=$("badgeImage").value.trim();
+      if(!validGameUrl(image_url))return alert("Enter a valid image URL.");
+      const row={game_id:gameId,creator_id:currentUser.id,name:$("badgeName").value.trim(),image_url,description:$("badgeDescription").value.trim(),condition_type:$("badgeCondition").value,requirement_seconds:Number($("badgeSeconds").value)||0,condition_value:$("badgeConditionValue").value.trim()};
+      const {error}=await sb.from("deluxe_badges").insert(row);
+      if(error)return alert(error.message);
+      toast("Badge created",row.name+" is now in the global badge collection.");
+      await showDeluxeBadges();
+    });
+  };
+window.deleteGameBadge=async(id)=>{
+  if(!confirm("Delete this badge?"))return;
+  const {error}=await sb.from("deluxe_badges").delete().eq("id",id).eq("creator_id",currentUser.id);
+  if(error)return alert(error.message);
+  toast("Badge deleted","The badge was removed.");
+  await showDeluxeBadges();
+};
 async function checkCurrentGameBadges(){if(!sb||!currentUser||!currentGame||!el("gamePage")?.classList.contains("active"))return;const {data:badges}=await sb.from("deluxe_badges").select("id,name,description,requirement_seconds,condition_type").eq("game_id",currentGame.id).eq("condition_type","time_played");if(!badges?.length)return;const [{data:play},{data:owned}]=await Promise.all([sb.from("game_playtime").select("seconds").eq("user_id",currentUser.id).eq("game_id",currentGame.id).maybeSingle(),sb.from("user_badges").select("badge_id").eq("user_id",currentUser.id)]);const ownedIds=new Set((owned||[]).map(x=>x.badge_id));for(const b of badges){if(!ownedIds.has(b.id)&&Number(play?.seconds||0)>=Number(b.requirement_seconds||0)){const {error}=await sb.from("user_badges").insert({user_id:currentUser.id,badge_id:b.id});if(!error){toast("Badge unlocked!",b.name);ownedIds.add(b.id)}}}}
 setInterval(()=>checkCurrentGameBadges().catch(e=>console.warn("Badge check:",e)),15000);
 async function popupCheck(){if(!currentUser)return;const since=lastPopupCheck;const [{data:notes},{data:msgs}]=await Promise.all([sb.from("deluxe_notifications").select("id,title,body,created_at").eq("user_id",currentUser.id).order("created_at",{ascending:false}).limit(8),sb.from("messages").select("id,content,created_at,sender:profiles!messages_sender_id_fkey(username)").eq("recipient_id",currentUser.id).is("game_id",null).order("created_at",{ascending:false}).limit(8)]);const items=[...(notes||[]),...(msgs||[]).map(m=>({id:"message-"+m.id,title:"Message from "+(m.sender?.username||"Administrator"),body:m.content,created_at:m.created_at}))].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));if(since){const fresh=items.filter(n=>new Date(n.created_at).getTime()>since);if(fresh.length)toast(fresh[0].title,fresh[0].body)}lastPopupCheck=Date.now()}
