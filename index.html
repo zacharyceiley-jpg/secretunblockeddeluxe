@@ -1571,9 +1571,7 @@ body.light-mode .pilot-welcome{color:#626d80}
 
 
   async function openGame(id){
-    deluxeDetectedScreenText="";
-    if(deluxeGameTextObserver){deluxeGameTextObserver.disconnect();deluxeGameTextObserver=null;}
-    deluxeObservedGameDocument=null;
+    window.deluxeResetGameTextCapture?.();
     if (!sb) return;
     const {data,error} = await sb.from("games").select("id,title,description,thumbnail_url,icon_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)").eq("id",id).maybeSingle();
     if (error || !data) return alert(error?.message || "Game not found.");
@@ -2402,6 +2400,11 @@ window.deleteGameBadge=async(id)=>{
   await showDeluxeBadges();
 };
 let deluxeDetectedScreenText="";
+window.deluxeResetGameTextCapture=function(){
+  deluxeDetectedScreenText="";
+  if(deluxeGameTextObserver){deluxeGameTextObserver.disconnect();deluxeGameTextObserver=null;}
+  deluxeObservedGameDocument=null;
+};
 let deluxeGameTextObserver=null;
 let deluxeObservedGameDocument=null;
 function captureDeluxeBadgeText(text){
