@@ -1571,6 +1571,7 @@ body.light-mode .pilot-welcome{color:#626d80}
 
 
   async function openGame(id){
+    deluxeDetectedScreenText="";
     if (!sb) return;
     const {data,error} = await sb.from("games").select("id,title,description,thumbnail_url,icon_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)").eq("id",id).maybeSingle();
     if (error || !data) return alert(error?.message || "Game not found.");
@@ -1597,6 +1598,7 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
 
   function leaveGame(){
+    deluxeDetectedScreenText="";
     flushDeluxePlayTracking();
     deluxePlayTrackingId = null;
     deluxePlayTrackingStarted = 0;
@@ -2394,7 +2396,46 @@ window.deleteGameBadge=async(id)=>{
   toast("Badge deleted","The badge was removed.");
   await showDeluxeBadges();
 };
-async function checkCurrentGameBadges(){if(!sb||!currentUser||!currentGame||!el("gamePage")?.classList.contains("active"))return;const {data:badges}=await sb.from("deluxe_badges").select("id,name,description,requirement_seconds,condition_type").eq("game_id",currentGame.id).eq("condition_type","time_played");if(!badges?.length)return;const [{data:play},{data:owned}]=await Promise.all([sb.from("game_playtime").select("seconds").eq("user_id",currentUser.id).eq("game_id",currentGame.id).maybeSingle(),sb.from("user_badges").select("badge_id").eq("user_id",currentUser.id)]);const ownedIds=new Set((owned||[]).map(x=>x.badge_id));for(const b of badges){if(!ownedIds.has(b.id)&&Number(play?.seconds||0)>=Number(b.requirement_seconds||0)){const {error}=await sb.from("user_badges").insert({user_id:currentUser.id,badge_id:b.id});if(!error){toast("Badge unlocked!",b.name);ownedIds.add(b.id)}}}}
+let deluxeDetectedScreenText="";
+function captureDeluxeBadgeText(text){
+  if(typeof text!=="string"||!text.trim())return;
+  deluxeDetectedScreenText=(text+" "+deluxeDetectedScreenText).slice(0,50000);
+}
+window.addEventListener("message",event=>{
+  const frame=$("activeGameFrame");
+  if(!frame||event.source!==frame.contentWindow||!event.data||typeof event.data!=="object")return;
+  if(event.data.type==="DELUXE_BADGE_TEXT"&&typeof event.data.text==="string")captureDeluxeBadgeText(event.data.text);
+});
+function scanReadableGameText(){
+  const frame=$("activeGameFrame");
+  try{
+    const doc=frame?.contentDocument;
+    if(doc?.body)captureDeluxeBadgeText(doc.body.innerText||doc.body.textContent||"");
+  }catch(_){/* Cross-origin games must explicitly send the integration message. */}
+}
+async function checkCurrentGameBadges(){
+  if(!sb||!currentUser||!currentGame||!el("gamePage")?.classList.contains("active"))return;
+  scanReadableGameText();
+  const {data:badges,error}=await sb.from("deluxe_badges").select("id,name,description,requirement_seconds,condition_type,condition_value").eq("game_id",currentGame.id);
+  if(error||!badges?.length)return;
+  const [{data:play},{data:owned}]=await Promise.all([
+    sb.from("game_playtime").select("seconds").eq("user_id",currentUser.id).eq("game_id",currentGame.id).maybeSingle(),
+    sb.from("user_badges").select("badge_id").eq("user_id",currentUser.id)
+  ]);
+  const ownedIds=new Set((owned||[]).map(x=>x.badge_id));
+  const seconds=Number(play?.seconds||0)+((deluxePlayTrackingId===currentGame.id&&deluxePlayTrackingStarted)?Math.floor((Date.now()-deluxePlayTrackingStarted)/1000):0);
+  for(const b of badges){
+    if(ownedIds.has(b.id)||seconds<Number(b.requirement_seconds||0))continue;
+    let matched=b.condition_type==="time_played";
+    if(b.condition_type==="text_on_screen"){
+      const target=String(b.condition_value||"").trim().toLocaleLowerCase();
+      matched=!!target&&deluxeDetectedScreenText.toLocaleLowerCase().includes(target);
+    }
+    if(!matched)continue;
+    const {error:awardError}=await sb.from("user_badges").insert({user_id:currentUser.id,badge_id:b.id});
+    if(!awardError){ownedIds.add(b.id);toast("Badge unlocked!",b.name)}
+  }
+}
 setInterval(()=>checkCurrentGameBadges().catch(e=>console.warn("Badge check:",e)),15000);
 async function popupCheck(){if(!currentUser)return;const since=lastPopupCheck;const [{data:notes},{data:msgs}]=await Promise.all([sb.from("deluxe_notifications").select("id,title,body,created_at").eq("user_id",currentUser.id).order("created_at",{ascending:false}).limit(8),sb.from("messages").select("id,content,created_at,sender:profiles!messages_sender_id_fkey(username)").eq("recipient_id",currentUser.id).is("game_id",null).order("created_at",{ascending:false}).limit(8)]);const items=[...(notes||[]),...(msgs||[]).map(m=>({id:"message-"+m.id,title:"Message from "+(m.sender?.username||"Administrator"),body:m.content,created_at:m.created_at}))].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));if(since){const fresh=items.filter(n=>new Date(n.created_at).getTime()>since);if(fresh.length)toast(fresh[0].title,fresh[0].body)}lastPopupCheck=Date.now()}
 const originalRefresh=refreshSession;refreshSession=async function(){await originalRefresh();if(currentUser){await presence();lastPopupCheck=Date.now();if(popupTimer)clearInterval(popupTimer);popupTimer=setInterval(popupCheck,8000)}else{if(presenceTimer)clearInterval(presenceTimer);if(popupTimer)clearInterval(popupTimer)}};
