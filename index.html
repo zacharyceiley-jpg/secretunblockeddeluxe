@@ -1638,17 +1638,6 @@ body.light-mode .pilot-welcome{color:#626d80}
       if(!response.ok)return;
       const type=(response.headers.get("content-type")||"").toLowerCase();
       const rawText=await response.text();
-      // Best-effort scan of externally hosted HTML when the host permits CORS.
-      // This captures text present in the initial HTML only; it cannot read cross-origin
-      // iframe updates or text drawn into a canvas.
-      if(type.includes("text/html")){
-        try{
-          const readableDoc=new DOMParser().parseFromString(rawText,"text/html");
-          readableDoc.querySelectorAll("script,style,template,noscript,svg").forEach(node=>node.remove());
-          const initialText=readableDoc.body?.innerText||readableDoc.body?.textContent||"";
-          if(initialText)captureDeluxeBadgeText(initialText);
-        }catch(_){}
-      }
       // Ignore a UTF-8 BOM, whitespace, and leading comments/XML declarations when detecting HTML.
       const text=rawText.replace(/^\uFEFF/,"").trimStart();
       const withoutPreamble=text
