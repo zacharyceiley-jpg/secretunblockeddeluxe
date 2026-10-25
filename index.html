@@ -1671,6 +1671,7 @@ body.light-mode .pilot-welcome{color:#626d80}
         <div><div class="game-player-title">${escapeHtml(g.title)}</div><div class="game-player-meta">Created by ${escapeHtml(g.profiles?.username || "Unknown")}</div></div>
         <button class="secondary" onclick="openGameMenu()">☰ Menu</button>
       </div>
+      <div id="sfothFirstBloodClaimArea" style="margin:0 0 12px"></div>
       <div class="game-player-shell">
         <iframe id="activeGameFrame" class="game-player-frame" src="about:blank" title="${escapeHtml(g.title)}" allow="fullscreen; gamepad; autoplay" allowfullscreen sandbox="allow-scripts allow-forms allow-popups allow-pointer-lock allow-downloads" loading="eager"></iframe>
         <div id="gameMenu" class="game-menu hidden">
@@ -1688,6 +1689,7 @@ body.light-mode .pilot-welcome{color:#626d80}
         </div>
       </div>
       ${g.chat_enabled ? `<div id="gameChatPanel" class="game-chat-panel"><div class="game-chat-head"><h3>💬 ${escapeHtml(g.title)} Chat</h3><span class="admin-status">Resets daily at 12:00 AM Australia time</span></div><div id="gameChatBox" class="game-chat-box"><div class="loading">Loading chat…</div></div><div class="game-chat-input"><input id="gameChatInput" maxlength="1000" placeholder="Message this game's chat…"><button class="primary" id="gameChatSend">Send</button></div></div>` : `<div class="game-chat-panel"><div class="game-chat-disabled">💬 Chat is disabled for this game.</div></div>`}`;
+    renderSfothFirstBloodClaim();
     loadPlayableGameFrame(g.game_url);
     if (g.chat_enabled) {
       $("gameChatSend").onclick=sendGameMessage;
@@ -2395,6 +2397,65 @@ window.deleteGameBadge=async(id)=>{
   if(error)return alert(error.message);
   toast("Badge deleted","The badge was removed.");
   await showDeluxeBadges();
+};
+const SFOTH_FIRST_BLOOD_GAME_ID="c33e3989-8c4e-4f72-b190-a3c4ecc1132a";
+const SFOTH_FIRST_BLOOD_BADGE_ID="f376fbf7-25fc-4081-a53a-497ca7395e1f";
+async function renderSfothFirstBloodClaim(){
+  const area=$("sfothFirstBloodClaimArea");
+  if(!area)return;
+  area.innerHTML="";
+  if(!currentGame||currentGame.id!==SFOTH_FIRST_BLOOD_GAME_ID)return;
+  if(!currentUser){
+    area.innerHTML='<p class="social-muted">Sign in to claim the First Blood badge.</p>';
+    return;
+  }
+  const [{data:badge,error:badgeError},{data:owned,error:ownedError}]=await Promise.all([
+    sb.from("deluxe_badges").select("id,name,requirement_seconds").eq("id",SFOTH_FIRST_BLOOD_BADGE_ID).eq("game_id",SFOTH_FIRST_BLOOD_GAME_ID).maybeSingle(),
+    sb.from("user_badges").select("badge_id").eq("user_id",currentUser.id).eq("badge_id",SFOTH_FIRST_BLOOD_BADGE_ID).maybeSingle()
+  ]);
+  if(!area.isConnected||!currentGame||currentGame.id!==SFOTH_FIRST_BLOOD_GAME_ID)return;
+  if(badgeError||ownedError||!badge||owned)return;
+  area.innerHTML='<button class="primary" id="claimSfothFirstBloodButton" onclick="claimSfothFirstBlood()">🏅 Claim First Blood</button> <span class="social-muted">Claim this badge while playing SFOTH IV.</span>';
+}
+window.claimSfothFirstBlood=async function(){
+  const area=$("sfothFirstBloodClaimArea");
+  const button=$("claimSfothFirstBloodButton");
+  if(!currentUser){openAuth("login");return}
+  if(!currentGame||currentGame.id!==SFOTH_FIRST_BLOOD_GAME_ID||!button)return;
+  button.disabled=true;
+  button.textContent="Saving playtime…";
+  try{
+    const badgeResult=await sb.from("deluxe_badges").select("id,name,requirement_seconds").eq("id",SFOTH_FIRST_BLOOD_BADGE_ID).eq("game_id",SFOTH_FIRST_BLOOD_GAME_ID).maybeSingle();
+    if(badgeResult.error||!badgeResult.data)throw new Error("The First Blood badge could not be found.");
+    const badge=badgeResult.data;
+    const elapsed=deluxePlayTrackingId===currentGame.id&&deluxePlayTrackingStarted?Math.floor((Date.now()-deluxePlayTrackingStarted)/1000):0;
+    if(elapsed>0){
+      const {error:timeError}=await sb.rpc("record_game_playtime",{p_game_id:currentGame.id,p_seconds:Math.min(elapsed,60)});
+      if(timeError)throw new Error("Could not save your playtime. Please try again.");
+      const values=getDeluxePlaytime();
+      values[currentGame.id]=Number(values[currentGame.id]||0)+elapsed;
+      try{localStorage.setItem(DELUXE_PLAYTIME_KEY,JSON.stringify(values))}catch{}
+      deluxePlayTrackingStarted=Date.now();
+    }
+    const {data:play,error:playError}=await sb.from("game_playtime").select("seconds").eq("user_id",currentUser.id).eq("game_id",currentGame.id).maybeSingle();
+    if(playError)throw playError;
+    const sessionElapsed=deluxePlayTrackingId===currentGame.id&&deluxePlayTrackingStarted?Math.floor((Date.now()-deluxePlayTrackingStarted)/1000):0;
+    if(Number(play?.seconds||0)+sessionElapsed<Number(badge.requirement_seconds||0)){
+      button.disabled=false;
+      button.textContent="🏅 Claim First Blood";
+      toast("Keep playing","Play for a little longer before claiming this badge.");
+      return;
+    }
+    const {error:awardError}=await sb.from("user_badges").insert({user_id:currentUser.id,badge_id:badge.id});
+    if(awardError&&awardError.code!=="23505")throw awardError;
+    area.innerHTML='<span style="color:#86efac;font-weight:700">✓ First Blood claimed!</span>';
+    toast("Badge unlocked!",badge.name);
+  }catch(error){
+    console.error("First Blood claim failed:",error);
+    button.disabled=false;
+    button.textContent="🏅 Claim First Blood";
+    toast("Could not claim badge",error.message||"Please try again.");
+  }
 };
 let deluxeDetectedScreenText="";
 function captureDeluxeBadgeText(text){
