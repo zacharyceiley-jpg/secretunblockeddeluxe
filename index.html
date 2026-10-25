@@ -2284,11 +2284,30 @@ function toast(title,body){if(!el("deluxeToast"))return;el("deluxeToastTitle").t
 window.showDeluxeToast=toast;
 function date(v){return new Date(v).toLocaleString()}
 async function presence(){if(!sb||!currentUser)return;const {error}=await sb.from("user_presence").upsert({user_id:currentUser.id,online:true,current_game_id:currentGame?.id||null,updated_at:new Date().toISOString()});if(error)console.warn(error.message)}
-async function loadCommunity(){if(!currentUser){openAuth("login");return}await Promise.all([requests(),friends(),groups(),messages()]);await findUsers();await presence();if(presenceTimer)clearInterval(presenceTimer);presenceTimer=setInterval(presence,25000)}
+const presenceCache={};
+async function pollPresenceCards(){
+ if(!sb||!currentUser)return;
+ const {data:rows,error}=await sb.from("user_presence").select("user_id,online,current_game_id,updated_at");
+ if(error)return;
+ const map={};(rows||[]).forEach(p=>map[p.user_id]=p);
+ const {data:friendRows}=await sb.from("friendships").select("friend_id").eq("user_id",currentUser.id);
+ const friendIds=new Set((friendRows||[]).map(f=>f.friend_id));
+ for(const elx of document.querySelectorAll("[id^='userPresence-']")){
+  const id=elx.id.slice("userPresence-".length),p=map[id],online=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;
+  const game=p?.current_game_id?allPublishedGames.find(g=>g.id===p.current_game_id):null;
+  elx.className="presence-pill"+(online?" online":"");
+  elx.textContent=online?(game?"Online · "+game.title:"Online"):"Offline";
+  if(friendIds.has(id)&&online&&presenceCache[id]===false)toast("Friend is online",elx.closest(".user-card")?.querySelector(".user-name")?.textContent||"A friend is now online.");
+ }
+ for(const id of friendIds){const p=map[id];const online=!!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;const e=el("friendPresence-"+id);if(e){e.className="presence-pill"+(online?" online":"");e.textContent=online?(p.current_game_id?"Online · playing a game":"Online"):"Offline"}if(!(id in presenceCache))presenceCache[id]=online;else if(presenceCache[id]===false&&online)toast("Friend is online","One of your friends just came online.");presenceCache[id]=online}
+}
+window.refreshDeluxePresenceCards=pollPresenceCards;
+setInterval(pollPresenceCards,15000);
+async function loadCommunity(){if(!currentUser){openAuth("login");return}await Promise.all([requests(),friends(),groups(),messages()]);await findUsers();await presence();await pollPresenceCards();if(presenceTimer)clearInterval(presenceTimer);presenceTimer=setInterval(presence,25000)}
 async function requests(){if(!currentUser)return;const {data,error}=await sb.from("friend_requests").select("id,sender_id,sender:profiles!friend_requests_sender_id_fkey(username)").eq("recipient_id",currentUser.id).eq("status","pending").order("created_at",{ascending:false});if(error){el("friendRequests").textContent="Unable to load requests.";return}el("friendRequests").innerHTML=(data||[]).map(r=>'<div class="social-row"><div class="grow"><strong>'+escapeHtml(r.sender?.username||"User")+'</strong></div><button class="primary" onclick="respondFriendRequest(\''+r.id+'\',true)">Accept</button><button class="secondary" onclick="respondFriendRequest(\''+r.id+'\',false)">Ignore</button></div>').join("")||'<p class="social-muted">No pending requests.</p>'}
 window.sendFriendRequest=async id=>{if(!currentUser){openAuth("login");return}if(id===currentUser.id)return;const {error}=await sb.from("friend_requests").insert({sender_id:currentUser.id,recipient_id:id});if(error){toast("Friend request",error.code==="23505"?"A request already exists.":error.message);return}toast("Friend request sent","They can accept it from Community.")};
 window.respondFriendRequest=async(id,accept)=>{const {error}=await sb.from("friend_requests").update({status:accept?"accepted":"rejected"}).eq("id",id).eq("recipient_id",currentUser.id);if(error)return alert(error.message);await requests();await friends();toast(accept?"Friend added":"Request dismissed",accept?"You can now chat.":"The request was dismissed.")};
-async function friends(){if(!currentUser)return;const {data,error}=await sb.from("friendships").select("friend_id,profiles!friendships_friend_id_fkey(username,avatar_url)").eq("user_id",currentUser.id);if(error){el("friendsList").textContent="Unable to load friends.";return}el("friendsList").innerHTML=(data||[]).map(f=>'<div class="social-row"><div class="grow"><strong>'+escapeHtml(f.profiles?.username||"User")+'</strong></div><button class="secondary" onclick="openFriendChat(\''+f.friend_id+'\',\''+escapeHtml(f.profiles?.username||"Friend").replace(/'/g,"&#039;")+'\')">Chat</button></div>').join("")||'<p class="social-muted">Add users to start a friends list.</p>'}
+async function friends(){if(!currentUser)return;const {data,error}=await sb.from("friendships").select("friend_id,profiles!friendships_friend_id_fkey(username,avatar_url)").eq("user_id",currentUser.id);if(error){el("friendsList").textContent="Unable to load friends.";return}el("friendsList").innerHTML=(data||[]).map(f=>'<div class="social-row"><div class="grow"><strong>'+escapeHtml(f.profiles?.username||"User")+'</strong><br><small class="presence-pill" id="friendPresence-'+f.friend_id+'">Checking status…</small></div><button class="secondary" onclick="openFriendChat(\''+f.friend_id+'\',\''+escapeHtml(f.profiles?.username||"Friend").replace(/'/g,"&#039;")+'\')">Chat</button></div>').join("")||'<p class="social-muted">Add users to start a friends list.</p>'}
 async function findUsers(){if(!currentUser)return;const q=(el("friendSearch")?.value||"").trim();const {data,error}=await sb.from("profiles").select("id,username").ilike("username","%"+q.replace(/[%_]/g,"")+"%").neq("id",currentUser.id).order("username").limit(12);if(error)return;el("friendSearchResults").innerHTML=(data||[]).map(u=>'<div class="social-row"><div class="grow">'+escapeHtml(u.username)+'</div><button class="secondary" onclick="sendFriendRequest(\''+u.id+'\')">＋ Add</button></div>').join("")||'<p class="social-muted">No users found.</p>'}
 el("friendSearch")?.addEventListener("input",()=>findUsers());
 window.openFriendChat=async(id,name)=>{const {data}=await sb.from("friendships").select("friend_id").eq("user_id",currentUser.id).eq("friend_id",id).maybeSingle();if(!data)return alert("Accept a friend request before chatting.");friendId=id;friendName=name;el("friendChatTitle").textContent=name;openModal("friendChatModal");await friendMessages()};
