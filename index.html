@@ -515,6 +515,31 @@ body.light-mode .pilot-welcome{color:#626d80}
         </div>
 
         <div class="section-heading" style="margin-top:30px">
+          <div><p class="eyebrow">REWARDS</p><h2>Gift an exclusive theme</h2></div>
+        </div>
+        <div class="game-uploader">
+          <div class="game-form">
+            <p class="small-note">Grant a user the TDS or SFOTH exclusive theme. Gifts are saved to their Deluxe account and remain unlocked.</p>
+            <label for="adminThemeGiftSearch">Find a user
+              <input id="adminThemeGiftSearch" type="search" placeholder="Search usernames…" oninput="renderAdminThemeGiftUsers()">
+            </label>
+            <label for="adminThemeGiftUser">Recipient
+              <select id="adminThemeGiftUser">
+                <option value="">Loading users…</option>
+              </select>
+            </label>
+            <label for="adminThemeGiftTheme">Theme
+              <select id="adminThemeGiftTheme">
+                <option value="tds">TDS Theme</option>
+                <option value="sfoth">SFOTH Theme</option>
+              </select>
+            </label>
+            <button class="primary" id="adminGiftThemeButton" type="button" onclick="giftAdminTheme()">Gift Theme</button>
+            <div id="adminThemeGiftStatus" class="auth-message" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div class="section-heading" style="margin-top:30px">
           <div><p class="eyebrow">USER MANAGEMENT</p><h2>Suspensions & bans</h2></div>
         </div>
         <div class="admin-tools">
@@ -1861,6 +1886,58 @@ flushDeluxePlayTracking();
     const {error} = await sb.from("user_bans").delete().eq("user_id",id);
     if (error) return alert(error.message);
     await loadAdminUserTools();
+  }
+
+  function renderAdminThemeGiftUsers(){
+    const select = $("adminThemeGiftUser");
+    const search = ($("adminThemeGiftSearch")?.value || "").trim().toLowerCase();
+    if (!select) return;
+    const previous = select.value;
+    const users = adminAllUsers.filter(user => String(user.username || "").toLowerCase().includes(search));
+    select.innerHTML = '<option value="">Choose a recipient…</option>' + users.map(user =>
+      '<option value="' + escapeHtml(user.id) + '">' + escapeHtml(user.username || "User") + '</option>'
+    ).join("");
+    if (users.some(user => user.id === previous)) select.value = previous;
+  }
+
+  async function giftAdminTheme(){
+    const status = $("adminThemeGiftStatus");
+    const button = $("adminGiftThemeButton");
+    const userId = $("adminThemeGiftUser")?.value;
+    const themeId = $("adminThemeGiftTheme")?.value;
+    if (!currentUser || currentRole !== "admin" || !sb) {
+      if (status) status.textContent = "Admin access is required.";
+      return;
+    }
+    if (!userId) {
+      if (status) status.textContent = "Choose a recipient first.";
+      return;
+    }
+    const recipient = adminAllUsers.find(user => user.id === userId);
+    const themeNames = {tds:"TDS Theme", sfoth:"SFOTH Theme"};
+    if (!confirm("Gift " + themeNames[themeId] + " to " + (recipient?.username || "this user") + "?")) return;
+    if (button) button.disabled = true;
+    if (status) { status.style.color = "var(--muted)"; status.textContent = "Sending theme gift…"; }
+    try {
+      const {data, error} = await sb.rpc("admin_gift_exclusive_theme", {
+        p_target_user_id: userId,
+        p_theme_id: themeId
+      });
+      if (error) throw error;
+      if (!data || !data.length) throw new Error("The theme gift was not saved.");
+      if (status) {
+        status.style.color = "var(--success, #62d69a)";
+        status.textContent = themeNames[themeId] + " gifted to " + (data[0].username || recipient?.username || "user") + ".";
+      }
+    } catch (error) {
+      console.error("Theme gift failed:", error);
+      if (status) {
+        status.style.color = "#ff7b7b";
+        status.textContent = error.message || "Unable to gift this theme.";
+      }
+    } finally {
+      if (button) button.disabled = false;
+    }
   }
 
   async function loadAdminPanel(){
