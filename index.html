@@ -448,7 +448,7 @@ body.light-mode .pilot-welcome{color:#626d80}
   </form>
   <div id="gameServerChannelTabs" class="social-channel-tabs" style="margin-top:12px"></div>
 </div>
-<div id="communityFeed" class="social-feed"><p class="social-muted">Sign in to view community.</p></div><form id="communityPostForm"><textarea id="communityPostInput" class="social-textarea" maxlength="1500" placeholder="Write a message…" required></textarea><button class="primary" type="submit">Send message</button></form></div></div></section>
+<div id="communityFeed" class="social-feed"><p class="social-muted">Sign in to view community.</p></div><form id="communityPostForm"><textarea id="communityPostInput" class="social-textarea" maxlength="1500" placeholder="Write a message…" required></textarea><button class="primary" type="submit">Send message</button></form><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px"><button type="button" class="secondary" id="emailChannelSubscribe">✉ Subscribe to email updates</button><small id="emailChannelStatus" class="social-muted">Email updates are optional.</small></div></div></div></section>
 <div id="friendChatModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" onclick="closeModal('friendChatModal')"></div><section class="modal-card" style="width:min(620px,100%)"><button class="modal-close" onclick="closeModal('friendChatModal')">×</button><p class="eyebrow">FRIENDS</p><h2 id="friendChatTitle">Chat</h2><div id="friendChatFeed" class="social-feed"></div><form id="friendChatForm"><textarea id="friendChatInput" class="social-textarea" maxlength="1000" placeholder="Message your friend…" required></textarea><button class="primary" type="submit">Send</button></form></section></div>
 <div id="groupChatModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" onclick="closeModal('groupChatModal')"></div><section class="modal-card" style="width:min(620px,100%)"><button class="modal-close" onclick="closeModal('groupChatModal')">×</button><p class="eyebrow">GROUP CHAT</p><h2 id="groupChatTitle">Group</h2><div class="social-actions"><select id="groupInviteFriend" class="social-select" aria-label="Choose a friend to invite"><option value="">Choose a friend…</option></select><button id="groupInviteButton" class="secondary" type="button">Add friend</button></div><div id="groupChatFeed" class="social-feed"></div><form id="groupChatForm"><textarea id="groupChatInput" class="social-textarea" maxlength="1000" placeholder="Message the group…" required></textarea><button class="primary" type="submit">Send</button></form></section></div>
 <div id="deluxeToast" class="deluxe-toast hidden" role="status" aria-live="polite"><strong id="deluxeToastTitle"></strong><p id="deluxeToastBody"></p></div><section id="inboxPage" class="page">
@@ -2479,8 +2479,45 @@ el("groupInviteButton")?.addEventListener("click",async()=>{const user_id=el("gr
 async function groupMessages(){const {data,error}=await sb.from("deluxe_group_messages").select("id,sender_id,content,created_at,profiles!deluxe_group_messages_sender_id_fkey(username)").eq("group_id",groupId).order("created_at").limit(100);if(error){el("groupChatFeed").textContent=error.message;return}el("groupChatFeed").innerHTML=(data||[]).map(m=>'<div class="social-post"><strong>'+escapeHtml(m.sender_id===currentUser.id?"You":m.profiles?.username||"User")+'</strong><small class="social-muted"> · '+escapeHtml(date(m.created_at))+'</small><p>'+escapeHtml(m.content)+'</p></div>').join("")||'<p class="social-muted">Start the group conversation.</p>'}
 el("groupChatForm")?.addEventListener("submit",async e=>{e.preventDefault();const content=el("groupChatInput").value.trim();if(!content||!groupId)return;const {error}=await sb.from("deluxe_group_messages").insert({group_id:groupId,sender_id:currentUser.id,content});if(error)return alert(error.message);el("groupChatInput").value="";await groupMessages()});
 async function messages(){if(!currentUser)return;const {data,error}=await sb.from("community_messages").select("id,channel,sender_id,content,created_at,profiles!community_messages_sender_id_fkey(username)").eq("channel",channel).order("created_at",{ascending:false}).limit(80);if(error){el("communityFeed").innerHTML='<p class="social-muted">Channel restricted or unavailable.</p>';el("communityPostForm").classList.toggle("hidden",channel==="admins"||channel==="news"||currentRole!=="admin");return}el("communityChannelTitle").textContent="# "+channel;el("communityChannelHint").textContent=channel==="news"?"Announcements posted by admins.":channel==="admins"?"Admins and their friends; admins only can post.":channel==="bugs"?"Report bugs and site issues.":"General community chat.";el("communityPostForm").classList.toggle("hidden",(channel==="admins"||channel==="news")&&currentRole!=="admin");el("communityFeed").innerHTML=(data||[]).reverse().map(m=>'<div class="social-post"><strong>'+escapeHtml(m.profiles?.username||"User")+'</strong><small class="social-muted"> · '+escapeHtml(date(m.created_at))+'</small><p>'+escapeHtml(m.content)+'</p></div>').join("")||'<p class="social-muted">No messages yet.</p>'}
-document.querySelectorAll("[data-channel]").forEach(b=>b.addEventListener("click",async()=>{activeGameServerId=null;const serverTabs=el("gameServerChannelTabs");if(serverTabs)serverTabs.innerHTML="";channel=b.dataset.channel;document.querySelectorAll("[data-channel]").forEach(x=>x.classList.toggle("active",x===b));await messages()}));
-el("communityPostForm")?.addEventListener("submit",async e=>{if(activeGameServerId)return;e.preventDefault();const content=el("communityPostInput").value.trim();if(!content)return;const {error}=await sb.from("community_messages").insert({channel,sender_id:currentUser.id,content});if(error)return alert(error.message);el("communityPostInput").value="";await messages()});
+document.querySelectorAll("[data-channel]").forEach(b=>b.addEventListener("click",async()=>{activeGameServerId=null;const serverTabs=el("gameServerChannelTabs");if(serverTabs)serverTabs.innerHTML="";channel=b.dataset.channel;document.querySelectorAll("[data-channel]").forEach(x=>x.classList.toggle("active",x===b));await messages();await refreshEmailSubscription()}));
+async function currentEmailChannelKey(){return activeGameServerId?"game:"+activeGameServerId+":"+activeGameServerType:"community:"+channel}
+async function refreshEmailSubscription(){
+ const btn=el("emailChannelSubscribe"),status=el("emailChannelStatus");if(!btn||!status)return;
+ if(!currentUser){btn.textContent="✉ Subscribe to email updates";status.textContent="Sign in to manage email updates.";return}
+ const key=await currentEmailChannelKey();
+ const {data,error}=await sb.from("email_channel_subscriptions").select("id").eq("user_id",currentUser.id).eq("channel_key",key).maybeSingle();
+ if(error){status.textContent="Email settings unavailable.";return}
+ btn.textContent=data?"✓ Unsubscribe from email updates":"✉ Subscribe to email updates";
+ status.textContent=data?"You'll receive emails for new posts here.":"Only posts in this channel will email you.";
+}
+el("emailChannelSubscribe")?.addEventListener("click",async()=>{
+ if(!currentUser){toast("Sign in required","Sign in to subscribe to channel email updates.");return}
+ const btn=el("emailChannelSubscribe");btn.disabled=true;
+ try{
+  const key=await currentEmailChannelKey();
+  const {data,error}=await sb.from("email_channel_subscriptions").select("id").eq("user_id",currentUser.id).eq("channel_key",key).maybeSingle();
+  if(error)throw error;
+  if(data){const {error:delError}=await sb.from("email_channel_subscriptions").delete().eq("id",data.id);if(delError)throw delError;}
+  else{const {error:insError}=await sb.from("email_channel_subscriptions").insert({user_id:currentUser.id,channel_key:key});if(insError)throw insError;}
+  await refreshEmailSubscription();
+ }catch(err){toast("Email settings failed",err?.message||"Please try again.");}
+ finally{btn.disabled=false;}
+});
+async function notifyEmailSubscribers(scope,messageId){
+ if(!messageId||!currentUser)return;
+ try{
+  const {data,error}=await sb.functions.invoke("send-channel-email",{body:{scope,message_id:String(messageId)}});
+  if(error)console.warn("Channel email notification failed",error);
+  else if(data?.failed)console.warn("Some channel email notifications were rejected",data);
+ }catch(err){console.warn("Channel email notification unavailable",err)}
+}
+el("communityPostForm")?.addEventListener("submit",async e=>{
+ if(activeGameServerId)return;
+ e.preventDefault();const content=el("communityPostInput").value.trim();if(!content||!currentUser)return;
+ const {data,error}=await sb.from("community_messages").insert({channel,sender_id:currentUser.id,content}).select("id").single();
+ if(error)return alert(error.message);
+ el("communityPostInput").value="";await messages();await refreshEmailSubscription();notifyEmailSubscribers("community",data.id);
+});
 async function popupCheck(){if(!currentUser)return;const since=lastPopupCheck;const [{data:notes},{data:msgs}]=await Promise.all([sb.from("deluxe_notifications").select("id,title,body,created_at").eq("user_id",currentUser.id).order("created_at",{ascending:false}).limit(8),sb.from("messages").select("id,content,created_at,sender:profiles!messages_sender_id_fkey(username)").eq("recipient_id",currentUser.id).is("game_id",null).order("created_at",{ascending:false}).limit(8)]);const items=[...(notes||[]),...(msgs||[]).map(m=>({id:"message-"+m.id,title:"Message from "+(m.sender?.username||"Administrator"),body:m.content,created_at:m.created_at}))].sort((a,b)=>new Date(b.created_at)-new Date(a.created_at));if(since){const fresh=items.filter(n=>new Date(n.created_at).getTime()>since);if(fresh.length)toast(fresh[0].title,fresh[0].body)}lastPopupCheck=Date.now()}
 const originalRefresh=refreshSession;refreshSession=async function(){await originalRefresh();if(currentUser){await presence();lastPopupCheck=Date.now();if(popupTimer)clearInterval(popupTimer);popupTimer=setInterval(popupCheck,8000)}else{if(presenceTimer)clearInterval(presenceTimer);if(popupTimer)clearInterval(popupTimer)}};
 const originalOpenGame=openGame;openGame=async function(id){await originalOpenGame(id);if(currentUser)presence()};
@@ -2507,7 +2544,7 @@ async function loadGameServers(){
 function renderGameServerTabs(){
  const wrap=el("gameServerChannelTabs");if(!wrap)return;
  wrap.innerHTML=["fans","news","bugs"].map(t=>'<button type="button" class="secondary '+(t===activeGameServerType?'active':'')+'" data-game-channel="'+t+'"># '+t+'</button>').join("");
- wrap.querySelectorAll("[data-game-channel]").forEach(b=>b.addEventListener("click",async()=>{activeGameServerType=b.dataset.gameChannel;renderGameServerTabs();await loadGameChannelMessages()}));
+ wrap.querySelectorAll("[data-game-channel]").forEach(b=>b.addEventListener("click",async()=>{activeGameServerType=b.dataset.gameChannel;renderGameServerTabs();await loadGameChannelMessages();await refreshEmailSubscription()}));
 }
 async function chooseGameServer(id){
  activeGameServerId=id||null;
@@ -2525,7 +2562,7 @@ async function chooseGameServer(id){
  el("communityPostForm").classList.toggle("hidden",activeGameServerType==="news" && !cachedGameServers.some(g=>g.id===activeGameServerId && g.creator_id===currentUser?.id) && currentRole!=="admin");
  el("communityPostInput").placeholder=activeGameServerType==="news"?"Post an official game announcement…":activeGameServerType==="bugs"?"Describe a bug…":"Message this game's fans…";
  renderGameServerTabs();
- await loadGameChannelMessages();
+ await loadGameChannelMessages();await refreshEmailSubscription();
 }
 async function loadGameChannelMessages(){
  if(!activeGameServerId||!currentUser)return;
@@ -2563,9 +2600,9 @@ if(originalGameChannelSubmit)originalGameChannelSubmit.addEventListener("submit"
  if(lookupError){toast("Message failed","Could not find this game's channels.");return}
  const c=(channels||[]).find(x=>x.channel_type===activeGameServerType);
  if(!c){toast("Message failed","This channel is not ready yet.");return}
- const {error}=await sb.from("game_channel_messages").insert({channel_id:c.id,sender_id:currentUser.id,content});
+ const {data:posted,error}=await sb.from("game_channel_messages").insert({channel_id:c.id,sender_id:currentUser.id,content}).select("id").single();
  if(error){toast("Message not sent",error.message);return}
- el("communityPostInput").value="";await loadGameChannelMessages();
+ el("communityPostInput").value="";await loadGameChannelMessages();await refreshEmailSubscription();notifyEmailSubscribers("game",posted.id);
 });
 const oldLoadCommunity=window.loadCommunity;
 window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity();await loadGameServers()};
