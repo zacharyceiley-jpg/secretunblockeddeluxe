@@ -1365,13 +1365,22 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
 
   function renderGames(filter=""){
-    const q = filter.trim().toLowerCase();
-    const publicGames = allPublishedGames.filter(g =>
-      !q ||
-      String(g.title || "").toLowerCase().includes(q) ||
-      String(g.description || "").toLowerCase().includes(q) ||
-      String(g.profiles?.username || "").toLowerCase().includes(q)
-    );
+    const q = String(filter || "").trim().toLocaleLowerCase();
+    const publicGames = allPublishedGames.filter(g => {
+      if (!q) return true;
+      const genres = getGameGenres(g);
+      const textMatches =
+        String(g.title || "").toLocaleLowerCase().includes(q) ||
+        String(g.description || "").toLocaleLowerCase().includes(q) ||
+        String(g.profiles?.username || "").toLocaleLowerCase().includes(q);
+      // Search genres as well as title/description/creator. Match whole genre
+      // labels and partial genre text, regardless of capitalization.
+      const genreMatches = genres.some(genre =>
+        genre.toLocaleLowerCase().includes(q) ||
+        q.includes(genre.toLocaleLowerCase())
+      );
+      return textMatches || genreMatches;
+    });
     const gameMarkup = (games) => games.map(g => renderDiscoveryCard(g)).join("");
     const section = (title, eyebrow, games, id) => games.length ? `
       <section class="game-discovery-section" id="${id}">
@@ -1440,8 +1449,26 @@ body.light-mode .pilot-welcome{color:#626d80}
       <div class="game-card-actions"><button class="primary" onclick="event.stopPropagation();openGameDetails('${g.id}')">View game</button></div></div></article>`;
   }
   function getGameGenres(game) {
-    const raw = Array.isArray(game?.genres) ? game.genres : (Array.isArray(game?.tags) ? game.tags : []);
-    return [...new Set(raw.map(value => String(value).trim()).filter(Boolean))].slice(0, 10);
+    // Current games use the "tags" column; tolerate older rows where tags or
+    // genres were saved as a comma-separated string or JSON-encoded array.
+    const source = game?.genres ?? game?.tags ?? [];
+    let raw = source;
+    if (typeof raw === "string") {
+      const trimmed = raw.trim();
+      if (!trimmed) return [];
+      try {
+        const parsed = JSON.parse(trimmed);
+        raw = Array.isArray(parsed) ? parsed : trimmed.split(",");
+      } catch {
+        raw = trimmed.split(",");
+      }
+    }
+    if (!Array.isArray(raw)) raw = [];
+    return [...new Set(raw
+      .map(value => String(value ?? "").trim())
+      .filter(Boolean)
+      .map(value => value.replace(/^["']|["']$/g, "")))]
+      .slice(0, 10);
   }
   function parseGameGenres(value) {
     return [...new Set(String(value || "").split(",").map(tag => tag.trim()).filter(Boolean))].slice(0, 10);
