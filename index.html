@@ -435,6 +435,19 @@ body.light-mode .pilot-welcome{color:#626d80}
 <h3 style="margin-top:20px">Group chats</h3><form id="createGroupForm"><input id="groupNameInput" class="social-input" maxlength="60" placeholder="New group name" required><button class="secondary" type="submit">＋ Create group</button></form><div id="groupsList"></div></div>
 <div class="social-panel"><h2 id="communityChannelTitle"># general</h2><p id="communityChannelHint" class="social-muted">Everyone can chat here.</p>
 <div class="social-channel-tabs"><button class="secondary active" data-channel="general"># general</button><button class="secondary" data-channel="bugs"># bugs</button><button class="secondary" data-channel="news"># news</button><button class="secondary" data-channel="admins"># admins</button></div>
+<div class="game-server-box" style="border:1px solid var(--line);border-radius:12px;padding:14px;margin:14px 0;background:var(--panel)">
+  <h3 style="margin:0 0 8px">🎮 Game servers</h3>
+  <p class="social-muted" style="margin:0 0 10px">Every published game has Fans, News, and Bugs channels. News can only be posted by that game's owner.</p>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <select id="gameServerSelect" class="social-input" style="flex:1;min-width:180px"><option value="">Choose a game server…</option></select>
+    <button id="refreshGameServers" type="button" class="secondary">Refresh</button>
+  </div>
+  <form id="createGameServerForm" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+    <select id="ownedGameSelect" class="social-input" style="flex:1;min-width:180px" required><option value="">Choose one of your games…</option></select>
+    <button class="secondary" type="submit">＋ Add my game</button>
+  </form>
+  <div id="gameServerChannelTabs" class="social-channel-tabs" style="margin-top:12px"></div>
+</div>
 <div id="communityFeed" class="social-feed"><p class="social-muted">Sign in to view community.</p></div><form id="communityPostForm"><textarea id="communityPostInput" class="social-textarea" maxlength="1500" placeholder="Write a message…" required></textarea><button class="primary" type="submit">Send message</button></form></div></div></section>
 <div id="friendChatModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" onclick="closeModal('friendChatModal')"></div><section class="modal-card" style="width:min(620px,100%)"><button class="modal-close" onclick="closeModal('friendChatModal')">×</button><p class="eyebrow">FRIENDS</p><h2 id="friendChatTitle">Chat</h2><div id="friendChatFeed" class="social-feed"></div><form id="friendChatForm"><textarea id="friendChatInput" class="social-textarea" maxlength="1000" placeholder="Message your friend…" required></textarea><button class="primary" type="submit">Send</button></form></section></div>
 <div id="groupChatModal" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" onclick="closeModal('groupChatModal')"></div><section class="modal-card" style="width:min(620px,100%)"><button class="modal-close" onclick="closeModal('groupChatModal')">×</button><p class="eyebrow">GROUP CHAT</p><h2 id="groupChatTitle">Group</h2><div class="social-actions"><select id="groupInviteFriend" class="social-select" aria-label="Choose a friend to invite"><option value="">Choose a friend…</option></select><button id="groupInviteButton" class="secondary" type="button">Add friend</button></div><div id="groupChatFeed" class="social-feed"></div><form id="groupChatForm"><textarea id="groupChatInput" class="social-textarea" maxlength="1000" placeholder="Message the group…" required></textarea><button class="primary" type="submit">Send</button></form></section></div>
@@ -2472,6 +2485,90 @@ async function popupCheck(){if(!currentUser)return;const since=lastPopupCheck;co
 const originalRefresh=refreshSession;refreshSession=async function(){await originalRefresh();if(currentUser){await presence();lastPopupCheck=Date.now();if(popupTimer)clearInterval(popupTimer);popupTimer=setInterval(popupCheck,8000)}else{if(presenceTimer)clearInterval(presenceTimer);if(popupTimer)clearInterval(popupTimer)}};
 const originalOpenGame=openGame;openGame=async function(id){await originalOpenGame(id);if(currentUser)presence()};
 window.addEventListener("pagehide",()=>{if(sb&&currentUser)sb.from("user_presence").update({online:false,current_game_id:null,updated_at:new Date().toISOString()}).eq("user_id",currentUser.id)});
+
+/* Game-specific fan/news/bug servers */
+let activeGameServerId=null, activeGameServerType="fans", cachedGameServers=[];
+async function loadGameServers(){
+ const select=el("gameServerSelect"), owned=el("ownedGameSelect");
+ if(!select||!owned||!currentUser)return;
+ select.innerHTML='<option value="">Loading game servers…</option>';
+ const {data:games,error}=await sb.from("games").select("id,title,creator_id,status").eq("status","published").order("title");
+ if(error){select.innerHTML='<option value="">Could not load game servers</option>';return}
+ const {data:ownedGames}=await sb.from("games").select("id,title,status").eq("creator_id",currentUser.id).order("title");
+ const list=games||[];
+ const mine=ownedGames||[];
+ select.innerHTML='<option value="">Choose a game server…</option>'+list.map(g=>'<option value="'+g.id+'">'+escapeHtml(g.title||"Untitled game")+'</option>').join("");
+ owned.innerHTML='<option value="">Choose one of your games…</option>'+mine.map(g=>'<option value="'+g.id+'">'+escapeHtml(g.title||"Untitled game")+'</option>').join("");
+ cachedGameServers=list;
+ if(list.length && !activeGameServerId) select.value=list[0].id;
+ if(activeGameServerId)select.value=activeGameServerId;
+ if(select.value)await chooseGameServer(select.value);else renderGameServerTabs();
+}
+function renderGameServerTabs(){
+ const wrap=el("gameServerChannelTabs");if(!wrap)return;
+ wrap.innerHTML=["fans","news","bugs"].map(t=>'<button type="button" class="secondary '+(t===activeGameServerType?'active':'')+'" data-game-channel="'+t+'"># '+t+'</button>').join("");
+ wrap.querySelectorAll("[data-game-channel]").forEach(b=>b.addEventListener("click",async()=>{activeGameServerType=b.dataset.gameChannel;renderGameServerTabs();await loadGameChannelMessages()}));
+}
+async function chooseGameServer(id){
+ activeGameServerId=id||null;
+ const wrap=el("gameServerChannelTabs");
+ if(!activeGameServerId){if(wrap)wrap.innerHTML="";return}
+ const {data:channels,error}=await sb.from("game_channels").select("id,channel_type,name").eq("game_id",activeGameServerId);
+ if(error){if(wrap)wrap.innerHTML='<p class="social-muted">Could not load channels. Refresh and try again.</p>';return}
+ const channelRow=(channels||[]).find(c=>c.channel_type===activeGameServerType);
+ if(!channelRow) {
+   if(wrap)wrap.innerHTML='<p class="social-muted">Channels are being prepared for this game. Try Refresh.</p>';
+   return;
+ }
+ el("communityChannelTitle").textContent=channelRow.name;
+ el("communityChannelHint").textContent=activeGameServerType==="news"?"Official news from the game owner.":activeGameServerType==="bugs"?"Report bugs and issues for this game.":"Chat with fans of this game.";
+ el("communityPostForm").classList.toggle("hidden",activeGameServerType==="news" && !cachedGameServers.some(g=>g.id===activeGameServerId && g.creator_id===currentUser?.id) && currentRole!=="admin");
+ el("communityPostInput").placeholder=activeGameServerType==="news"?"Post an official game announcement…":activeGameServerType==="bugs"?"Describe a bug…":"Message this game's fans…";
+ renderGameServerTabs();
+ await loadGameChannelMessages();
+}
+async function loadGameChannelMessages(){
+ if(!activeGameServerId||!currentUser)return;
+ const {data:channels,error:channelError}=await sb.from("game_channels").select("id,channel_type,name").eq("game_id",activeGameServerId);
+ if(channelError)return;
+ const channelRow=(channels||[]).find(c=>c.channel_type===activeGameServerType);
+ if(!channelRow)return;
+ const {data,error}=await sb.from("game_channel_messages").select("id,sender_id,content,created_at,profiles!game_channel_messages_sender_id_fkey(username)").eq("channel_id",channelRow.id).order("created_at",{ascending:true}).limit(100);
+ if(error){el("communityFeed").innerHTML='<p class="social-muted">Could not load this game channel.</p>';return}
+ el("communityChannelTitle").textContent=channelRow.name;
+ el("communityFeed").innerHTML=(data||[]).map(m=>'<div class="social-post"><strong>'+escapeHtml(m.profiles?.username||"User")+'</strong><small class="social-muted"> · '+escapeHtml(date(m.created_at))+'</small><p>'+escapeHtml(m.content)+'</p></div>').join("")||'<p class="social-muted">No messages yet.</p>';
+ const mine=cachedGameServers.some(g=>g.id===activeGameServerId&&g.creator_id===currentUser.id);
+ el("communityPostForm").classList.toggle("hidden",activeGameServerType==="news"&&!mine&&currentRole!=="admin");
+}
+el("gameServerSelect")?.addEventListener("change",e=>chooseGameServer(e.target.value));
+el("refreshGameServers")?.addEventListener("click",()=>loadGameServers());
+el("createGameServerForm")?.addEventListener("submit",async e=>{
+ e.preventDefault();if(!currentUser){openAuth("login");return}
+ const id=el("ownedGameSelect").value;if(!id)return;
+ const {data:game,error}=await sb.from("games").select("id,title,creator_id").eq("id",id).eq("creator_id",currentUser.id).maybeSingle();
+ if(error||!game){toast("Couldn't add game","Only games you own can be added.");return}
+ const {error:ensureError}=await sb.from("game_channels").select("id").eq("game_id",id);
+ if(ensureError){toast("Channels unavailable","Refresh and try again.");return}
+ activeGameServerId=id;activeGameServerType="fans";el("gameServerSelect").value=id;
+ toast("Game server ready",game.title+" has Fans, News and Bugs channels.");
+ await chooseGameServer(id);
+});
+const originalGameChannelSubmit=el("communityPostForm");
+if(originalGameChannelSubmit)originalGameChannelSubmit.addEventListener("submit",async e=>{
+ if(!activeGameServerId)return;
+ e.preventDefault();
+ if(!currentUser){openAuth("login");return}
+ const content=el("communityPostInput").value.trim();if(!content)return;
+ const {data:channels,error:lookupError}=await sb.from("game_channels").select("id,channel_type").eq("game_id",activeGameServerId);
+ if(lookupError){toast("Message failed","Could not find this game's channels.");return}
+ const c=(channels||[]).find(x=>x.channel_type===activeGameServerType);
+ if(!c){toast("Message failed","This channel is not ready yet.");return}
+ const {error}=await sb.from("game_channel_messages").insert({channel_id:c.id,sender_id:currentUser.id,content});
+ if(error){toast("Message not sent",error.message);return}
+ el("communityPostInput").value="";await loadGameChannelMessages();
+});
+const oldLoadCommunity=window.loadCommunity;
+window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity();await loadGameServers()};
 })();
 </script></body>
 </html>
