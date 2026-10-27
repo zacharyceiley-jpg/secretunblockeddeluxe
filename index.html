@@ -2494,7 +2494,7 @@ async function loadGameServers(){
  select.innerHTML='<option value="">Loading game servers…</option>';
  const {data:games,error}=await sb.from("games").select("id,title,creator_id,status").eq("status","published").order("title");
  if(error){select.innerHTML='<option value="">Could not load game servers</option>';return}
- const {data:ownedGames}=await sb.from("games").select("id,title,status").eq("creator_id",currentUser.id).order("title");
+ const {data:ownedGames}=await sb.from("games").select("id,title,status").eq("creator_id",currentUser.id).eq("status","published").order("title");
  const list=games||[];
  const mine=ownedGames||[];
  select.innerHTML='<option value="">Choose a game server…</option>'+list.map(g=>'<option value="'+g.id+'">'+escapeHtml(g.title||"Untitled game")+'</option>').join("");
