@@ -1455,6 +1455,47 @@ body.light-mode .pilot-welcome{color:#626d80}
       <div class="game-thumb">${thumb}</div><div class="game-card-body"><div class="game-title">${title}</div>
       <div class="game-card-actions"><button class="primary" onclick="event.stopPropagation();openGameDetails('${g.id}')">View game</button></div></div></article>`;
   }
+  function renderDiscover() {
+    const root = $("discoverSections"); if (!root) return;
+    const query = String($("discoverSearch")?.value || "").trim().toLocaleLowerCase();
+    const activeGenre = $("discoverGenreChips")?.querySelector(".active")?.dataset.discoverGenre || "";
+    const games = allPublishedGames.filter(game => {
+      const genres = getGameGenres(game);
+      const genreMatch = !activeGenre || genres.some(genre => genre.toLocaleLowerCase() === activeGenre.toLocaleLowerCase());
+      const values = [game.title, game.description, game.profiles?.username, ...genres];
+      const queryMatch = !query || values.some(value => String(value || "").toLocaleLowerCase().includes(query));
+      return genreMatch && queryMatch;
+    });
+    const genreSet = new Set(); allPublishedGames.forEach(game => getGameGenres(game).forEach(genre => genreSet.add(genre)));
+    const chips = $("discoverGenreChips");
+    if (chips) {
+      const active = activeGenre.toLocaleLowerCase();
+      let chipHtml = '<button type="button" data-discover-genre="" class="' + (!active ? "active" : "") + '" aria-pressed="' + (!active) + '">All genres</button>';
+      chipHtml += [...genreSet].sort((a,b) => a.localeCompare(b)).slice(0,14).map(genre => '<button type="button" data-discover-genre="' + escapeHtml(genre) + '" class="' + (genre.toLocaleLowerCase() === active ? "active" : "") + '" aria-pressed="' + (genre.toLocaleLowerCase() === active) + '">' + escapeHtml(genre) + '</button>').join("");
+      chips.innerHTML = chipHtml;
+    }
+    if (!games.length) { root.innerHTML = '<div class="discover-empty">' + (allPublishedGames.length ? "No games match that search. Try another title or genre." : "No published games are available yet. Check back soon!") + '</div>'; return; }
+    const recent = [...games].sort((a,b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0,12);
+    const trending = [...games].sort((a,b) => Number(b.total_playtime || 0) - Number(a.total_playtime || 0) || new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0,12);
+    const preferred = readDeluxeStore(DELUXE_GENRES_KEY, []);
+    const played = getDeluxeRecentGames();
+    const playedGames = played.map(id => allPublishedGames.find(game => game.id === id)).filter(Boolean);
+    const inferredGenres = [...new Set(playedGames.flatMap(game => getGameGenres(game)))];
+    const targetGenres = Array.isArray(preferred) && preferred.length ? preferred : inferredGenres;
+    let recommended = targetGenres.length ? games.filter(game => getGameGenres(game).some(genre => targetGenres.some(target => target.toLocaleLowerCase() === genre.toLocaleLowerCase()))) : [];
+    const playedIds = new Set(played); recommended = recommended.filter(game => !playedIds.has(game.id));
+    if (!recommended.length) { const trendingIds = new Set(trending.map(game => game.id)); recommended = games.filter(game => !trendingIds.has(game.id)).slice(0,12); }
+    if (!recommended.length) recommended = games.slice(0,12);
+    const section = (title, eyebrow, subtitle, items, key) => {
+      if (!items.length) return "";
+      return '<section class="discover-section" aria-labelledby="' + key + 'Title"><div class="discover-section-head"><div><p class="eyebrow">' + eyebrow + '</p><h2 id="' + key + 'Title">' + title + '</h2><p>' + subtitle + '</p></div></div><div class="discover-row">' + items.map(renderDiscoveryCard).join("") + '</div></section>';
+    };
+    const personalDescription = targetGenres.length ? "Based on " + (Array.isArray(preferred) && preferred.length ? "your saved genres." : "genres from games you have played.") : "A mix of games to help you discover something new.";
+    root.innerHTML = section("Trending globally", "POPULAR ON DELUXE", "Games with the most recorded playtime across the platform.", trending, "discoverTrending") +
+      section("Picked for you", "YOUR TASTE", personalDescription, recommended, "discoverRecommended") +
+      section("Recently added", "FRESH FINDS", "The newest published games on Deluxe.", recent, "discoverRecent");
+  }
+
   function getGameGenres(game) {
     // Current games use the "tags" column; tolerate older rows where tags or
     // genres were saved as a comma-separated string or JSON-encoded array.
@@ -2262,6 +2303,19 @@ flushDeluxePlayTracking();
   $("cancelGameUploader")?.addEventListener("click", closeGameUploader);
   $("gameForm")?.addEventListener("submit", submitGame);
   $("gameSearch")?.addEventListener("input", e => renderGames(e.target.value));
+  $("discoverSearch")?.addEventListener("input", renderDiscover);
+  $("discoverGenreChips")?.addEventListener("click", e => {
+    const chip = e.target.closest("[data-discover-genre]");
+    if (!chip) return;
+    const current = $("discoverGenreChips")?.querySelector(".active")?.dataset.discoverGenre || "";
+    const next = current === chip.dataset.discoverGenre ? "" : chip.dataset.discoverGenre;
+    $("discoverGenreChips")?.querySelectorAll("[data-discover-genre]").forEach(button => {
+      const active = button.dataset.discoverGenre === next;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+    renderDiscover();
+  });
 
   document.addEventListener("click", e => {
     const pageTarget = e.target.closest("[data-page]");
