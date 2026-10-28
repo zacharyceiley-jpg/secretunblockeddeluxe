@@ -1548,7 +1548,54 @@ body.light-mode .pilot-welcome{color:#626d80}
       <div class="game-detail-layout">${thumb}<div><h2>${escapeHtml(g.title || "Untitled Game")}</h2><p class="game-detail-description">${escapeHtml(g.description || "No description has been added yet.")}</p>
       <span class="game-genres-label">Genres</span><div class="game-genres-list">${tags || '<span class="game-tag">No genres added</span>'}</div><p class="game-meta">Age recommendation: ${escapeHtml(age)}</p>
       <p class="game-meta">Created by ${escapeHtml(g.profiles?.username || "Unknown creator")}</p><div class="game-card-actions"><button class="primary" onclick="playGameFromDetails('${g.id}')">▶ Play</button></div></div></div>`;
+    const ownerCanEditLinks = !!(currentUser && g.creator_id === currentUser.id);
+    const discordUrl = validGameUrl(g.discord_url || "") ? g.discord_url : "";
+    const fandomUrl = validGameUrl(g.fandom_url || "") ? g.fandom_url : "";
+    const linksMarkup = '<div class="game-community-links">' +
+      (discordUrl ? '<a class="game-community-link" href="' + escapeHtml(discordUrl) + '" target="_blank" rel="noopener noreferrer"><img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/discord-color-icon.png" alt="">Discord</a>' : '') +
+      (fandomUrl ? '<a class="game-community-link" href="' + escapeHtml(fandomUrl) + '" target="_blank" rel="noopener noreferrer"><img src="https://assets.streamlinehq.com/image/private/w_300,h_300,ar_1/f_auto/v1/icons/logos/fandom-urtw5vup5aklqnwhbxh08.png/fandom-wg2s5caqd65tbyuyrpcfc.png?_a=DATAiZAAZAA0" alt="">Fandom Wiki</a>' : '') +
+      ((!discordUrl && !fandomUrl) ? '<span class="game-meta">No community links added yet.</span>' : '') + '</div>';
+    const description = $("gameDetailRoot").querySelector(".game-detail-description");
+    if (description) description.insertAdjacentHTML("afterend", linksMarkup);
+    if (ownerCanEditLinks) {
+      const editor = '<div class="game-community-editor"><h3 style="margin:0 0 6px">Community links</h3><p class="game-meta">Add the Discord server and Fandom wiki for this game.</p><button class="secondary" type="button" onclick="toggleGameCommunityEditor(\\'' + g.id + '\\')">' + ((discordUrl || fandomUrl) ? "Edit links" : "Add Discord / Fandom links") + '</button><div id="gameCommunityEditorFields" hidden><label for="gameDiscordUrl">Discord invite URL</label><input id="gameDiscordUrl" type="url" placeholder="https://discord.gg/…" value="' + escapeHtml(g.discord_url || "") + '"><label for="gameFandomUrl">Fandom wiki URL</label><input id="gameFandomUrl" type="url" placeholder="https://yourgame.fandom.com/" value="' + escapeHtml(g.fandom_url || "") + '"><div class="game-community-editor-actions"><button class="primary" type="button" onclick="saveGameCommunityLinks(\\'' + g.id + '\\')">Save links</button><button class="secondary" type="button" onclick="toggleGameCommunityEditor(\\'' + g.id + '\\',false)">Cancel</button></div><p id="gameCommunityLinksMessage" class="game-meta" aria-live="polite"></p></div></div>';
+      const genresLabel = $("gameDetailRoot").querySelector(".game-genres-label");
+      if (genresLabel) genresLabel.insertAdjacentHTML("beforebegin", editor);
+    }
     showPage("gameDetail");
+  }
+
+  function toggleGameCommunityEditor(id, forceOpen) {
+    const game = allPublishedGames.find(item => item.id === id);
+    if (!game || !currentUser || game.creator_id !== currentUser.id) return;
+    const fields = $("gameCommunityEditorFields");
+    if (!fields) return;
+    fields.hidden = typeof forceOpen === "boolean" ? !forceOpen : !fields.hidden;
+    if (!fields.hidden) {
+      $("gameDiscordUrl").value = game.discord_url || "";
+      $("gameFandomUrl").value = game.fandom_url || "";
+    }
+  }
+  function setGameCommunityLinksMessage(message, isError) {
+    const target = $("gameCommunityLinksMessage");
+    if (!target) return;
+    target.textContent = message;
+    target.style.color = isError ? "var(--danger, #ff6868)" : "var(--muted)";
+  }
+  async function saveGameCommunityLinks(id) {
+    if (!sb || !currentUser) return openAuth("login");
+    const game = allPublishedGames.find(item => item.id === id);
+    if (!game || game.creator_id !== currentUser.id) return;
+    const discord_url = $("gameDiscordUrl").value.trim();
+    const fandom_url = $("gameFandomUrl").value.trim();
+    if (discord_url && !validGameUrl(discord_url)) return setGameCommunityLinksMessage("Enter a valid HTTP or HTTPS Discord invite URL.", true);
+    if (fandom_url && !validGameUrl(fandom_url)) return setGameCommunityLinksMessage("Enter a valid HTTP or HTTPS Fandom wiki URL.", true);
+    setGameCommunityLinksMessage("Saving links…", false);
+    const {error} = await sb.from("games").update({discord_url:discord_url || null, fandom_url:fandom_url || null, updated_at:new Date().toISOString()}).eq("id", id).eq("creator_id", currentUser.id);
+    if (error) return setGameCommunityLinksMessage(error.message, true);
+    game.discord_url = discord_url || null;
+    game.fandom_url = fandom_url || null;
+    openGameDetails(id);
   }
 
   function playGameFromDetails(id) {
