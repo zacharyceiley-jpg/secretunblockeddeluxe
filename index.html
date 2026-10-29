@@ -230,7 +230,6 @@ body.light-mode .pilot-welcome{color:#626d80}
     <nav class="nav">
       <a href="#" data-page="home">Home</a>
       <a href="#" data-page="games">Games</a>
-      <a href="#" data-page="discover">✦ Discover</a>
       
       <a href="#" data-page="users">Users</a><a href="#" data-page="community">Community</a>
       <a href="#" data-page="settings">Settings</a>
@@ -381,7 +380,6 @@ body.light-mode .pilot-welcome{color:#626d80}
       </div>
     </section>
 
-    <section id="discoverPage" class="page"><div class="discover-hero"><div><p class="eyebrow">YOUR NEXT FAVOURITE</p><h1>Discover</h1><p>Explore trending games, find hidden gems, and get recommendations picked for you.</p></div><div class="discover-hero-icon" aria-hidden="true">✦</div></div><div class="discover-toolbar"><input id="discoverSearch" class="game-search" type="search" placeholder="Search games or genres…" aria-label="Search Discover"><button class="secondary" type="button" data-page="games">Browse all games →</button></div><div id="discoverGenreChips" class="discover-genre-chips" aria-label="Browse by genre"></div><div id="discoverSections"><div class="loading">Loading games to discover…</div></div></section>
 
     <div id="gameUploader" class="modal hidden" aria-hidden="true">
       <div class="modal-backdrop" id="gameUploaderBackdrop"></div>
@@ -1388,8 +1386,6 @@ body.light-mode .pilot-welcome{color:#626d80}
         String(g.title || "").toLocaleLowerCase().includes(q) ||
         String(g.description || "").toLocaleLowerCase().includes(q) ||
         String(g.profiles?.username || "").toLocaleLowerCase().includes(q);
-      // Search genres as well as title/description/creator. Match whole genre
-      // labels and partial genre text, regardless of capitalization.
       const genreMatches = genres.some(genre =>
         genre.toLocaleLowerCase().includes(q) ||
         q.includes(genre.toLocaleLowerCase())
@@ -1404,15 +1400,23 @@ body.light-mode .pilot-welcome{color:#626d80}
       </section>` : "";
     const recentlyPlayed = getDeluxeRecentGames().map(id => publicGames.find(g => g.id === id)).filter(Boolean).slice(0,8);
     const recentIds = new Set(recentlyPlayed.map(g => g.id));
-    const remaining = publicGames.filter(g => !recentIds.has(g.id));
-    const recommended = remaining.filter(g => matchesPreferredGenres(g));
     const trending = [...publicGames].sort((a,b) => Number(b.total_playtime || 0)-Number(a.total_playtime || 0)).slice(0,12);
     const trendingIds = new Set(trending.map(g => g.id));
-    const rest = publicGames.filter(g => !recentIds.has(g.id) && !trendingIds.has(g.id));
+    const recentlyAdded = [...publicGames].sort((a,b) => {
+      const aDate = Date.parse(a.created_at || a.published_at || a.updated_at || "") || 0;
+      const bDate = Date.parse(b.created_at || b.published_at || b.updated_at || "") || 0;
+      return bDate - aDate;
+    }).slice(0,12);
+    const recentAddedIds = new Set(recentlyAdded.map(g => g.id));
+    const recommended = publicGames.filter(g => !recentIds.has(g.id) && matchesPreferredGenres(g)).slice(0,12);
+    const fallbackPicks = publicGames.filter(g => !recentIds.has(g.id) && !recommended.some(p => p.id === g.id) && !trendingIds.has(g.id)).slice(0,12);
+    const picksForYou = recommended.length ? recommended : (fallbackPicks.length ? fallbackPicks : publicGames.slice(0,12));
     const fullLibrary = [...publicGames];
     $("gameGrid").innerHTML =
       section("Continue","RECENTLY PLAYED",recentlyPlayed,"continueGames") +
       section("Trending","MOST PLAYED",trending,"trendingGames") +
+      section("Recently added","FRESH FINDS",recentlyAdded,"recentlyAddedGames") +
+      section("Picks for you","YOUR TASTE",picksForYou,"picksForYouGames") +
       section("All games","FULL LIBRARY",fullLibrary,"allGames") ||
       '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
     if (!publicGames.length) $("gameGrid").innerHTML = '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
