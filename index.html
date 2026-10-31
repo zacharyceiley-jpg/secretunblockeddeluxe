@@ -658,6 +658,7 @@ body.light-mode .pilot-welcome{color:#626d80}
   let adminUsersCache = [];
   let adminAllUsers = [];
   let adminSelectedUserId = null;
+  let delubuxBalance = 0;
   let adminMessagePresetApplied = false;
 
   const $ = id => document.getElementById(id);
@@ -974,6 +975,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (name === "gameDetail" && !allPublishedGames.length) loadGames();
     if (name === "admin") loadAdminPanel();
     if (name === "inbox") loadInbox();
+    if (name === "marketplace") loadThemeMarketplace();    if (name === "inbox") loadInbox();
   }
 
   function initials(name){
@@ -1186,6 +1188,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     ]);
 
     currentProfile = profile || null;
+    await loadDelubuxWallet();    currentProfile = profile || null;
     currentRole = role?.role || "user";
     applyExclusiveTheme();
     renderExclusiveThemeSettings();
@@ -1209,6 +1212,28 @@ body.light-mode .pilot-welcome{color:#626d80}
     alert("Your Secret Unblocked Deluxe account is suspended " + until + "." + (ban.reason ? "\nReason: " + ban.reason : ""));
   }
 
+
+  async function loadDelubuxWallet(){
+    if(!sb || !currentUser){delubuxBalance=0;updateDelubuxBalance();return;}
+    let {data,error}=await sb.from("delubux_wallets").select("*").eq("user_id",currentUser.id).maybeSingle();
+    if(error){console.warn(error);return;}
+    if(!data){const created=await sb.from("delubux_wallets").insert({user_id:currentUser.id}).select("*").single();if(created.error){console.warn(created.error);return;}data=created.data;}
+    delubuxBalance=Number(data.balance||0);window.deluxPilotUnlocked=!!data.site_pilot_unlocked;window.deluxLastDailyClaim=data.last_daily_claim_at;
+    updateDelubuxBalance();renderDailyRewardState();
+  }
+  function updateDelubuxBalance(){const el=$("delubuxBalance");if(el)el.textContent="🪙 "+delubuxBalance+" Delubux";}
+  function renderDailyRewardState(){const b=$("claimDailyReward");if(!b)return;const last=window.deluxLastDailyClaim?new Date(window.deluxLastDailyClaim).getTime():0;const ready=!last||Date.now()-last>=86400000;b.disabled=!currentUser||!ready;b.textContent=ready?"Claim 10 🪙":"Already claimed";}
+  async function claimDailyDelubux(){if(!currentUser)return openAuth("login");const {data,error}=await sb.rpc("delubux_claim_daily");if(error){$("dailyRewardMessage").textContent=error.message;return;}delubuxBalance=Number(data.balance||0);const {data:w}=await sb.from("delubux_wallets").select("last_daily_claim_at").eq("user_id",currentUser.id).single();window.deluxLastDailyClaim=w?.last_daily_claim_at;$("dailyRewardMessage").textContent=data.ok?"You received 10 Delubux!":"You already claimed today's reward.";updateDelubuxBalance();renderDailyRewardState();}
+  async function loadThemeMarketplace(){
+    const grid=$("themeMarketplaceGrid");if(!grid)return;if(!currentUser){grid.textContent="Sign in to browse themes.";return;}
+    const [{data:themes,error},{data:owned}]=await Promise.all([sb.from("game_theme_designs").select("game_id,theme_name,games(title)").order("updated_at",{ascending:false}),sb.from("user_created_theme_ownership").select("game_id").eq("user_id",currentUser.id)]);
+    if(error){grid.textContent=error.message;return;}const own=new Set((owned||[]).map(x=>x.game_id));grid.innerHTML="";
+    (themes||[]).forEach(t=>{const card=document.createElement("article");card.className="exclusive-theme-card";const body=document.createElement("div");body.className="exclusive-theme-body";const title=document.createElement("h3");title.textContent=t.theme_name;const desc=document.createElement("p");desc.textContent="For: "+(t.games?.title||"Game theme");const actions=document.createElement("div");actions.className="theme-actions";const buy=document.createElement("button");buy.className="primary";buy.textContent=own.has(t.game_id)?"Owned":"Buy · 6 🪙";buy.disabled=own.has(t.game_id);buy.onclick=()=>buyUserTheme(t.game_id);const gift=document.createElement("button");gift.className="secondary";gift.textContent="Gift · 5 🪙";gift.disabled=!own.has(t.game_id);gift.onclick=()=>giftUserTheme(t.game_id);actions.append(buy,gift);body.append(title,desc,actions);card.append(body);grid.append(card);});
+    if(!themes?.length)grid.textContent="No user-created themes yet.";
+  }
+  async function buyUserTheme(gameId){const {data,error}=await sb.rpc("delubux_buy_theme",{p_game_id:gameId,p_recipient_id:null});if(error)return alert(error.message);delubuxBalance=Number(data.balance);updateDelubuxBalance();await loadThemeMarketplace();alert("Theme purchased!");}
+  async function giftUserTheme(gameId){const username=prompt("Enter the recipient's exact Deluxe username:");if(!username)return;const {data:user,error:e}=await sb.from("profiles").select("id,username").ilike("username",username).maybeSingle();if(e||!user)return alert("User not found.");if(user.id===currentUser.id)return alert("You already own this theme.");const {data,error}=await sb.rpc("delubux_buy_theme",{p_game_id:gameId,p_recipient_id:user.id});if(error)return alert(error.message);delubuxBalance=Number(data.balance);updateDelubuxBalance();await loadThemeMarketplace();alert("Theme gifted to "+user.username+"!");}
+  async function adminGrantDelubux(){if(currentRole!=="admin")return;const id=$("adminDelubuxUser").value,amount=Number($("adminDelubuxAmount").value);if(!id||!Number.isInteger(amount)||amount<1||amount>100000)return alert("Choose a user and valid amount.");const {data,error}=await sb.rpc("delubux_admin_grant",{p_user_id:id,p_amount:amount});$("adminDelubuxStatus").textContent=error?error.message:"Granted "+amount+" Delubux. Balance: "+data.balance;}
   function updateAccountUI(){
     const btn = $("accountButton");
     const adminLink = $("adminNavLink");
@@ -2547,7 +2572,7 @@ flushDeluxePlayTracking();
     function speak(text){ if(!speechEnabled || !('speechSynthesis' in window)) return; stopSpeech(); const u=new SpeechSynthesisUtterance(text); u.rate=1; u.pitch=1; window.speechSynthesis.speak(u); }
     function addMessage(role, text, shouldSpeak=false){ const bubble=document.createElement('div'); bubble.className='pilot-msg '+role; const label=document.createElement('small'); label.textContent=role==='user'?'You':'Site Pilot AI'; const content=document.createElement('div'); content.textContent=text; bubble.append(label,content); messagesEl.appendChild(bubble); messagesEl.scrollTop=messagesEl.scrollHeight; if(shouldSpeak) speak(text); }
     function setBusy(value){ busy=value; $p('pilotSend').disabled=value; input.disabled=value; statusEl.textContent=value?'Site Pilot is thinking…':'Ready when you are.'; }
-    launcher.addEventListener('click',()=>setPanel(panel.classList.contains('hidden'))); $p('pilotClose').addEventListener('click',()=>setPanel(false)); $p('pilotStopSpeech').addEventListener('click',stopSpeech);
+    launcher.addEventListener('click',async()=>{if(!currentUser){setPanel(true);addMessage('assistant','Please sign in to unlock Site Pilot.');return;}if(!window.deluxPilotUnlocked){const ok=confirm('Unlock Site Pilot forever for 5 Delubux?');if(!ok)return;const {data,error}=await sb.rpc('delubux_unlock_site_pilot');if(error){alert(error.message);return;}delubuxBalance=Number(data.balance||0);window.deluxPilotUnlocked=true;updateDelubuxBalance();}setPanel(panel.classList.contains('hidden'));});    launcher.addEventListener('click',()=>setPanel(panel.classList.contains('hidden'))); $p('pilotClose').addEventListener('click',()=>setPanel(false)); $p('pilotStopSpeech').addEventListener('click',stopSpeech);
     $p('pilotSpeechToggle').addEventListener('click',()=>{ speechEnabled=!speechEnabled; const b=$p('pilotSpeechToggle'); b.classList.toggle('active',speechEnabled); b.setAttribute('aria-pressed',String(speechEnabled)); b.textContent=speechEnabled?'🔊 Read replies: On':'🔇 Read replies: Off'; if(!speechEnabled) stopSpeech(); });
     $p('pilotClear').addEventListener('click',()=>{stopSpeech();history=[];messagesEl.replaceChildren();const w=document.createElement('div');w.className='pilot-welcome';w.textContent='Chat cleared! What can I help you with?';messagesEl.appendChild(w);statusEl.textContent='Ready when you are.';});
     $p('pilotForm').addEventListener('submit',async e=>{
@@ -2556,7 +2581,8 @@ flushDeluxePlayTracking();
       let sessionResult; try { sessionResult=await sb.auth.getSession(); } catch(_){ sessionResult=null; }
       const session=sessionResult?.data?.session;
       if(!session?.access_token){addMessage('assistant','Please sign in first so I can securely connect to the AI. Your account session is required.');statusEl.textContent='Sign in required.';return;}
-      addMessage('user',prompt); input.value=''; history.push({role:'user',content:prompt}); setBusy(true);
+      if(!window.deluxPilotUnlocked){addMessage("assistant","Unlock Site Pilot for 5 Delubux to use it forever.");return;}
+      addMessage('user',prompt); input.value=''; history.push({role:'user',content:prompt}); setBusy(true);      addMessage('user',prompt); input.value=''; history.push({role:'user',content:prompt}); setBusy(true);
       try{
         const response=await fetch(SUPABASE_URL+'/functions/v1/site-pilot-ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({messages:history})});
         const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.error||'Could not reach Site Pilot AI. Please try again.');
