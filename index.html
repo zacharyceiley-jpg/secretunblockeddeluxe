@@ -2885,8 +2885,8 @@ flushDeluxePlayTracking();
     function buildSiteContext(){
       const features = new Set();
       const add = (kind, value) => {
-        const label = String(value || '').replace(/\\s+/g, ' ').trim().slice(0, 120);
-        if(label && !/^[0-9\\s.,!?]+$/.test(label)) features.add(kind + ': ' + label);
+        const label = String(value || '').replace(/\s+/g, ' ').trim().slice(0, 120);
+        if(label && !/^[0-9\s.,!?]+$/.test(label)) features.add(kind + ': ' + label);
       };
       document.querySelectorAll('.page').forEach(page => {
         if(page.id) add('Section', page.id);
