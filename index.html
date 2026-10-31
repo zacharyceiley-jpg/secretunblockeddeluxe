@@ -547,6 +547,15 @@ body.light-mode .pilot-welcome{color:#626d80}
           </div>
         </div>
 
+
+        <div class="section-heading" style="margin-top:30px"><div><p class="eyebrow">CURRENCY</p><h2>Grant Delubux</h2></div></div>
+        <div class="game-uploader"><div class="game-form">
+          <label for="adminDelubuxUser">User<select id="adminDelubuxUser"><option value="">Select a user…</option></select></label>
+          <label for="adminDelubuxAmount">Amount<input id="adminDelubuxAmount" type="number" min="1" max="100000" value="10"></label>
+          <button class="primary" type="button" onclick="adminGrantDelubux()">Grant Delubux</button>
+          <div id="adminDelubuxStatus" class="auth-message"></div>
+        </div></div>
+
         <div class="section-heading" style="margin-top:30px">
           <div><p class="eyebrow">REWARDS</p><h2>Gift an exclusive theme</h2></div>
         </div>
@@ -2238,6 +2247,9 @@ flushDeluxePlayTracking();
       sb.from("user_bans").select("user_id,banned_until,reason")
     ]);
     if (error) { console.error(error); return []; }
+    const grant = $("adminDelubuxUser");
+    if (grant) grant.innerHTML = '<option value="">Select a user…</option>' + (users || []).map(u => '<option value="' + u.id + '">' + escapeHtml(u.username || "User") + '</option>').join("");
+    const now = Date.now();    if (error) { console.error(error); return []; }
     const now = Date.now();
     const banMap = new Map((bans || []).map(b => [b.user_id, b]));
     return (users || []).map(u => {
