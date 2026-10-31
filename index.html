@@ -1261,7 +1261,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     }
     btn.textContent = currentProfile?.username || currentUser.email || "Account";
     btn.classList.remove("username-admin","username-publisher","username-bugtester");
-    if(currentUser)btn.classList.add(currentRole==="admin"?"username-admin":currentRole==="publisher"?"username-publisher":currentRole==="bugtester"?"username-bugtester":"");
+    if(currentUser){const usernameRoleClass=currentRole==="admin"?"username-admin":currentRole==="publisher"?"username-publisher":currentRole==="bugtester"?"username-bugtester":"";if(usernameRoleClass)btn.classList.add(usernameRoleClass);}
   }
 
   function switchAuthTab(tab){
