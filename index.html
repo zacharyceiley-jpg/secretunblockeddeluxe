@@ -2881,6 +2881,38 @@ flushDeluxePlayTracking();
     function speak(text){ if(!speechEnabled || !('speechSynthesis' in window)) return; stopSpeech(); const u=new SpeechSynthesisUtterance(text); u.rate=1; u.pitch=1; window.speechSynthesis.speak(u); }
     function addMessage(role, text, shouldSpeak=false){ const bubble=document.createElement('div'); bubble.className='pilot-msg '+role; const label=document.createElement('small'); label.textContent=role==='user'?'You':'Site Pilot AI'; const content=document.createElement('div'); content.textContent=text; bubble.append(label,content); messagesEl.appendChild(bubble); messagesEl.scrollTop=messagesEl.scrollHeight; if(shouldSpeak) speak(text); }
     function setBusy(value){ busy=value; $p('pilotSend').disabled=value; input.disabled=value; statusEl.textContent=value?'Site Pilot is thinking…':'Ready when you are.'; }
+    // Send only public interface labels and the current page URL, never form values or message contents.
+    function buildSiteContext(){
+      const features = new Set();
+      const add = (kind, value) => {
+        const label = String(value || '').replace(/\\s+/g, ' ').trim().slice(0, 120);
+        if(label && !/^[0-9\\s.,!?]+$/.test(label)) features.add(kind + ': ' + label);
+      };
+      document.querySelectorAll('.page').forEach(page => {
+        if(page.id) add('Section', page.id);
+      });
+      const selector = '.nav a, nav a, .page h1, .page h2, .page h3, .page button, .page [role="button"], .page input[placeholder], .page textarea[placeholder], .page select';
+      document.querySelectorAll(selector).forEach(node => {
+        if(node.closest('#sitePilotPanel, #pilotMessages, .game-card, .user-card, .social-post, .chat-message, .message-item, .notification-item')) return;
+        const label = node.getAttribute('aria-label') || node.getAttribute('title') || node.getAttribute('placeholder') || node.textContent;
+        const value = String(label || '').trim();
+        if(!value) return;
+        const kind = node.matches('h1,h2,h3') ? 'Heading' : node.matches('a') ? 'Navigation' : 'Control';
+        let detail = value;
+        if(node.matches('a')){
+          try{
+            const target = new URL(node.getAttribute('href') || '', window.location.href);
+            if(target.origin === window.location.origin) detail += ' (' + target.pathname + target.hash + ')';
+          }catch(_){}
+        }
+        add(kind, detail);
+      });
+      return {
+        url: window.location.origin + window.location.pathname,
+        title: document.title,
+        features: Array.from(features).slice(0, 80)
+      };
+    }
     launcher.addEventListener('click',async()=>{if(!currentUser){setPanel(true);addMessage('assistant','Please sign in to unlock Site Pilot.');return;}if(!window.deluxPilotUnlocked){const ok=confirm('Unlock Site Pilot forever for 5 Delubux?');if(!ok)return;const {data,error}=await sb.rpc('delubux_unlock_site_pilot');if(error){alert(error.message);return;}delubuxBalance=Number(data.balance||0);window.deluxPilotUnlocked=true;updateDelubuxBalance();}setPanel(panel.classList.contains('hidden'));}); $p('pilotClose').addEventListener('click',()=>setPanel(false)); $p('pilotStopSpeech').addEventListener('click',stopSpeech);
     $p('pilotSpeechToggle').addEventListener('click',()=>{ speechEnabled=!speechEnabled; const b=$p('pilotSpeechToggle'); b.classList.toggle('active',speechEnabled); b.setAttribute('aria-pressed',String(speechEnabled)); b.textContent=speechEnabled?'🔊 Read replies: On':'🔇 Read replies: Off'; if(!speechEnabled) stopSpeech(); });
     $p('pilotClear').addEventListener('click',()=>{stopSpeech();history=[];messagesEl.replaceChildren();const w=document.createElement('div');w.className='pilot-welcome';w.textContent='Chat cleared! What can I help you with?';messagesEl.appendChild(w);statusEl.textContent='Ready when you are.';});
@@ -2893,7 +2925,7 @@ flushDeluxePlayTracking();
       if(!window.deluxPilotUnlocked){addMessage("assistant","Unlock Site Pilot for 5 Delubux to use it forever.");return;}
       addMessage('user',prompt); input.value=''; history.push({role:'user',content:prompt}); setBusy(true);      addMessage('user',prompt); input.value=''; history.push({role:'user',content:prompt}); setBusy(true);
       try{
-        const response=await fetch(SUPABASE_URL+'/functions/v1/site-pilot-ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({messages:history})});
+        const response=await fetch(SUPABASE_URL+'/functions/v1/site-pilot-ai',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_ANON_KEY},body:JSON.stringify({messages:history,siteContext:buildSiteContext()})});
         const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.error||'Could not reach Site Pilot AI. Please try again.');
         const reply=String(data.reply||'I didn’t get a reply that time. Try again.'); history.push({role:'assistant',content:reply}); history=history.slice(-12); addMessage('assistant',reply,true);
       }catch(err){const msg=err?.message||'Something went wrong. Please try again.'; addMessage('assistant',msg);history.pop();}
