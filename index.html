@@ -1901,7 +1901,13 @@ body.light-mode .pilot-welcome{color:#626d80}
       link:bundle["game_"+n+"_link"],icon:bundle["game_"+n+"_icon"],thumbnail:bundle["game_"+n+"_thumbnail"],
       rarity:bundle.pack_rarity
     })).filter(game=>game.title&&validGameUrl(game.link)));
-    const q=String($("gameSearch")?.value||"").trim().toLocaleLowerCase();
+    renderPurchasedSeasonalGames($("gameSearch")?.value||"");
+  }
+
+  function renderPurchasedSeasonalGames(filter=""){
+    const section=$("purchasedSeasonalSection"),grid=$("purchasedSeasonalGrid");
+    if(!section||!grid)return;
+    const q=String(filter||"").trim().toLocaleLowerCase();
     const games=ownedSeasonalGames.filter(game=>!q||String(game.title).toLocaleLowerCase().includes(q)||String(game.bundleName||"").toLocaleLowerCase().includes(q));
     grid.innerHTML=games.map(game=>{
       const image=game.thumbnail||game.icon;
@@ -2617,7 +2623,7 @@ flushDeluxePlayTracking();
     $("gameUploaderBackdrop")?.addEventListener("click", closeGameUploader);
   $("cancelGameUploader")?.addEventListener("click", closeGameUploader);
   $("gameForm")?.addEventListener("submit", submitGame);
-  $("gameSearch")?.addEventListener("input", e => renderGames(e.target.value));
+  $("gameSearch")?.addEventListener("input", e => { renderGames(e.target.value); renderPurchasedSeasonalGames(e.target.value); });
   $("discoverSearch")?.addEventListener("input", renderDiscover);
   $("discoverGenreChips")?.addEventListener("click", e => {
     const chip = e.target.closest("[data-discover-genre]");
