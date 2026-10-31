@@ -401,6 +401,10 @@ body.light-mode .pilot-welcome{color:#626d80}
         </select>
         <button class="secondary" type="button" onclick="saveDeluxePreferredGenres()">Save genres</button>
       </div>
+      <section id="purchasedSeasonalSection" class="game-discovery-section hidden">
+        <div class="section-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Purchased Games</h2><p class="small-note">Seasonal games included in bundles you've purchased or received.</p></div></div>
+        <div id="purchasedSeasonalGrid" class="game-discovery-grid"></div>
+      </section>
       <div id="publicGamesSection">
         <div class="section-heading"><div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div></div>
         <div id="gameGrid" class="user-grid"><div class="loading">Loading games…</div></div>
@@ -1341,7 +1345,7 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
   async function purchaseSeasonalBundle(id){
     if(!currentUser)return openAuth("login");
-    try{const {data,error}=await sb.rpc("delubux_purchase_seasonal_bundle",{p_bundle_id:id,p_recipient_id:null});if(error)throw error;delubuxBalance=Number(data.balance);updateDelubuxBalance();await loadSeasonalMarketplace();alert("Seasonal bundle purchased! All three games are now in your collection.");}
+    try{const {data,error}=await sb.rpc("delubux_purchase_seasonal_bundle",{p_bundle_id:id,p_recipient_id:null});if(error)throw error;delubuxBalance=Number(data.balance);updateDelubuxBalance();await loadSeasonalMarketplace();await loadGames();alert("Seasonal bundle purchased! All three games are now in Purchased Games on the Games page.");}
     catch(error){alert(error.message||"Unable to purchase this bundle.");}
   }
   async function giftSeasonalBundle(id){
@@ -1563,6 +1567,7 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
 
   let allPublishedGames = [];
+  let ownedSeasonalGames = [];
 
   function validGameUrl(value){
     try {
@@ -1875,8 +1880,34 @@ body.light-mode .pilot-welcome{color:#626d80}
     }
 
     allPublishedGames = publicResult.data || [];
+    await loadPurchasedSeasonalGames();
     restoreDeluxePreferredGenres();
     renderGames($("gameSearch")?.value || "");
+  }
+
+  async function loadPurchasedSeasonalGames(){
+    ownedSeasonalGames = [];
+    const section=$("purchasedSeasonalSection"),grid=$("purchasedSeasonalGrid");
+    if(!section||!grid)return;
+    if(!currentUser){section.classList.add("hidden");grid.innerHTML="";return;}
+    const {data:ownership,error:ownershipError}=await sb.from("seasonal_bundle_ownership").select("bundle_id").eq("user_id",currentUser.id);
+    if(ownershipError){console.warn("Could not load purchased seasonal games",ownershipError);section.classList.add("hidden");return;}
+    const bundleIds=[...new Set((ownership||[]).map(row=>row.bundle_id).filter(Boolean))];
+    if(!bundleIds.length){section.classList.add("hidden");grid.innerHTML="";return;}
+    const {data:bundles,error:bundleError}=await sb.from("seasonal_bundles").select("id,pack_name,pack_rarity,game_1_title,game_1_link,game_1_icon,game_1_thumbnail,game_2_title,game_2_link,game_2_icon,game_2_thumbnail,game_3_title,game_3_link,game_3_icon,game_3_thumbnail").in("id",bundleIds);
+    if(bundleError){console.warn("Could not load purchased seasonal bundles",bundleError);section.classList.add("hidden");return;}
+    ownedSeasonalGames=(bundles||[]).flatMap(bundle=>[1,2,3].map(n=>({
+      key:bundle.id+"-"+n,bundleName:bundle.pack_name,title:bundle["game_"+n+"_title"],
+      link:bundle["game_"+n+"_link"],icon:bundle["game_"+n+"_icon"],thumbnail:bundle["game_"+n+"_thumbnail"],
+      rarity:bundle.pack_rarity
+    })).filter(game=>game.title&&validGameUrl(game.link)));
+    const q=String($("gameSearch")?.value||"").trim().toLocaleLowerCase();
+    const games=ownedSeasonalGames.filter(game=>!q||String(game.title).toLocaleLowerCase().includes(q)||String(game.bundleName||"").toLocaleLowerCase().includes(q));
+    grid.innerHTML=games.map(game=>{
+      const image=game.thumbnail||game.icon;
+      return '<a class="game-card" href="'+escapeHtml(game.link)+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><div class="game-thumb">'+(image?'<img src="'+escapeHtml(image)+'" alt="">':'🎮')+'</div><div class="game-card-body" style="opacity:1;inset:auto 0 0;min-height:64px;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.9))"><div class="game-title">'+escapeHtml(game.title)+'</div><div class="small-note">🔒 '+escapeHtml(game.bundleName)+' · Seasonal exclusive</div></div></a>';
+    }).join("")||'<p class="small-note">No purchased seasonal games match your search.</p>';
+    section.classList.toggle("hidden",ownedSeasonalGames.length===0);
   }
 
   function openGameUploader(){
