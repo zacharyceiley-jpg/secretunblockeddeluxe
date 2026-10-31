@@ -292,6 +292,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     <section id="marketplacePage" class="page">
       <div class="page-title"><p class="eyebrow">DELUXE ECONOMY</p><h1>🪙 Delubux Marketplace</h1><p>Earn daily Delubux and buy or gift community themes.</p></div>
       <article class="exclusive-theme-card"><div class="exclusive-theme-body"><h2>Daily reward · 10 Delubux</h2><p>Claim once every 24 hours.</p><button class="primary" id="claimDailyReward" onclick="claimDailyDelubux()">Claim 10 🪙</button><div id="dailyRewardMessage" class="theme-message"></div></div></article>
+      <div class="section-heading"><h2>Account roles</h2></div><p class="settings-note">Permanent account upgrades. Publisher usernames are green; Bugtester usernames are blue. Admin is reserved and cannot be purchased.</p><div id="roleMarketplaceGrid" class="settings-grid"></div><div id="roleMarketplaceMessage" class="theme-message"></div>
       <div class="section-heading"><h2>User-created themes</h2></div><p class="settings-note">Buy for 6 Delubux or gift an owned theme for 5 Delubux.</p><div id="themeMarketplaceGrid" class="settings-grid"></div>
     </section>
     <section id="settingsPage" class="page">
@@ -1231,9 +1232,14 @@ body.light-mode .pilot-welcome{color:#626d80}
     updateDelubuxBalance();renderDailyRewardState();
   }
   function updateDelubuxBalance(){const el=$("delubuxBalance");if(el)el.textContent="🪙 "+delubuxBalance+" Delubux";}
+  function roleLabel(role){return role==="admin"?"Admin":role==="publisher"?"Publisher":role==="bugtester"?"Bugtester":"Deluxe user";}
+  function roleClass(role){return role==="admin"?"role-admin":role==="publisher"?"role-publisher":role==="bugtester"?"role-bugtester":"";}
+  async function loadRoleMarketplace(){const grid=$("roleMarketplaceGrid");if(!grid)return;const roles=[{id:"publisher",name:"Publisher",cost:50,color:"#4ade80",description:"Your username appears green across Deluxe."},{id:"bugtester",name:"Bugtester",cost:30,color:"#60a5fa",description:"Your username appears blue and you can access unpublished games to test them."}];grid.innerHTML="";for(const role of roles){const owned=currentRole===role.id;const unavailable=currentRole==="admin"||(["publisher","bugtester"].includes(currentRole)&&!owned);const card=document.createElement("article");card.className="exclusive-theme-card";const body=document.createElement("div");body.className="exclusive-theme-body";const status=document.createElement("div");status.className="theme-status"+(owned?" unlocked":"");status.textContent=owned?"✓ Owned":currentRole==="admin"?"Admin account":unavailable?"You already own a special role":"Available";const title=document.createElement("h3");title.textContent=role.name;title.style.color=role.color;const desc=document.createElement("p");desc.textContent=role.description;const buy=document.createElement("button");buy.className=owned?"secondary":"primary";buy.textContent=owned?"Owned":"Buy · "+role.cost+" 🪙";buy.disabled=owned||unavailable||!currentUser;buy.onclick=()=>buyDelubuxRole(role.id);body.append(status,title,desc,buy);card.append(body);grid.append(card);}}
+  async function buyDelubuxRole(role){if(!currentUser)return openAuth("login");const {data,error}=await sb.rpc("delubux_buy_role",{p_role:role});if(error){$("roleMarketplaceMessage").textContent=error.message;return;}delubuxBalance=Number(data.balance);currentRole=data.role;updateDelubuxBalance();updateAccountUI();await loadRoleMarketplace();$("roleMarketplaceMessage").textContent=roleLabel(currentRole)+" role unlocked!";await loadUsers();}
   function renderDailyRewardState(){const b=$("claimDailyReward");if(!b)return;const last=window.deluxLastDailyClaim?new Date(window.deluxLastDailyClaim).getTime():0;const ready=!last||Date.now()-last>=86400000;b.disabled=!currentUser||!ready;b.textContent=ready?"Claim 10 🪙":"Already claimed";}
   async function claimDailyDelubux(){if(!currentUser)return openAuth("login");const {data,error}=await sb.rpc("delubux_claim_daily");if(error){$("dailyRewardMessage").textContent=error.message;return;}delubuxBalance=Number(data.balance||0);const {data:w}=await sb.from("delubux_wallets").select("last_daily_claim_at").eq("user_id",currentUser.id).single();window.deluxLastDailyClaim=w?.last_daily_claim_at;$("dailyRewardMessage").textContent=data.ok?"You received 10 Delubux!":"You already claimed today's reward.";updateDelubuxBalance();renderDailyRewardState();}
   async function loadThemeMarketplace(){
+    await loadRoleMarketplace();
     const grid=$("themeMarketplaceGrid");if(!grid)return;if(!currentUser){grid.textContent="Sign in to browse themes.";return;}
     const [{data:themes,error},{data:owned}]=await Promise.all([sb.from("game_theme_designs").select("game_id,theme_name,games(title)").order("updated_at",{ascending:false}),sb.from("user_created_theme_ownership").select("game_id").eq("user_id",currentUser.id)]);
     if(error){grid.textContent=error.message;return;}const own=new Set((owned||[]).map(x=>x.game_id));grid.innerHTML="";
@@ -1254,6 +1260,8 @@ body.light-mode .pilot-welcome{color:#626d80}
       return;
     }
     btn.textContent = currentProfile?.username || currentUser.email || "Account";
+    btn.classList.remove("username-admin","username-publisher","username-bugtester");
+    if(currentUser)btn.classList.add(currentRole==="admin"?"username-admin":currentRole==="publisher"?"username-publisher":currentRole==="bugtester"?"username-bugtester":"");
   }
 
   function switchAuthTab(tab){
@@ -1373,14 +1381,15 @@ body.light-mode .pilot-welcome{color:#626d80}
       .select("*").eq("id",id).maybeSingle();
     if (error || !p) return;
 
+    const {data:roleData}=await sb.from("user_roles").select("role").eq("user_id",id).maybeSingle();const profileRole=roleData?.role||"user";
     $("profileContent").innerHTML = `
       <div class="profile-head">
         <div class="avatar">
           ${p.avatar_url ? `<img src="${escapeHtml(p.avatar_url)}" alt="">` : escapeHtml(initials(p.username))}
         </div>
         <div>
-          <h2>${escapeHtml(p.username || "User")}</h2>
-          <div class="role">Deluxe user</div>
+          <h2 class="${roleClass(profileRole)}">${escapeHtml(p.username || "User")}</h2>
+          <div class="role ${roleClass(profileRole)}">${roleLabel(profileRole)}</div>
         </div>
       </div>
       <p class="profile-bio">${escapeHtml(p.bio || "No bio yet.")}</p>
@@ -1690,10 +1699,9 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (!sb) return;
     $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
 
-    const publicResult = await sb.from("games")
-      .select("id,title,description,thumbnail_url,icon_url,discord_url,fandom_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,total_playtime,profiles(username)")
-      .eq("status","published")
-      .order("created_at",{ascending:false});
+    let publicQuery = sb.from("games").select("id,title,description,thumbnail_url,icon_url,discord_url,fandom_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,total_playtime,profiles(username)");
+    if(currentRole!=="bugtester" && currentRole!=="admin")publicQuery=publicQuery.eq("status","published");
+    const publicResult = await publicQuery.order("created_at",{ascending:false});
 
     if (publicResult.error) {
       console.error(publicResult.error);
@@ -1832,7 +1840,7 @@ body.light-mode .pilot-welcome{color:#626d80}
 if (!sb) return;
     const {data,error} = await sb.from("games").select("id,title,description,thumbnail_url,icon_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,profiles(username)").eq("id",id).maybeSingle();
     if (error || !data) return alert(error?.message || "Game not found.");
-    if (data.status !== "published" && data.creator_id !== currentUser?.id && currentRole !== "admin") return alert("This game is not published.");
+    if (data.status !== "published" && data.creator_id !== currentUser?.id && currentRole !== "admin" && currentRole !== "bugtester") return alert("This game is not published.");
     currentGame = data;
     rememberDeluxeGame(id);
     startDeluxePlayTracking(id);
