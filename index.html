@@ -266,7 +266,7 @@ body.light-mode .pilot-welcome{color:#626d80}
       <a href="#" data-page="settings">Settings</a>
       <a href="#" data-page="inbox" id="inboxNavLink">📩 Inbox <span id="unreadBadge" class="unread-badge hidden">0</span></a>
       <a href="#" data-page="admin" id="adminNavLink" class="hidden">🛡️ Admin Panel</a>
-      <a href="https://zacharyceiley-jpg.github.io/secret-Unblocked-Listen/" target="_blank" rel="noopener">Listen</a>
+      <a href="https://zacharyceiley-jpg.github.io/secret-Unblocked-Listen/" target="_blank" rel="noopener" onclick="recordListenDailyTask()">Listen</a>
     </nav>
 
     <div class="account-area">
@@ -320,6 +320,8 @@ body.light-mode .pilot-welcome{color:#626d80}
 
 
     <section id="marketplacePage" class="page">
+      <article class="exclusive-theme-card" style="margin:18px 0"><div class="exclusive-theme-body"><h2>📅 Daily Tasks</h2><p>Complete these activities around Deluxe to earn <strong>50 Delubux each</strong>. Tasks reset daily.</p><div id="dailyTasksList" class="settings-grid"><div class="loading">Loading daily tasks…</div></div><div id="dailyTasksMessage" class="theme-message" aria-live="polite"></div></div></article>
+
       <div class="page-title"><p class="eyebrow">DELUXE ECONOMY</p><h1>🪙 Delubux Marketplace</h1><p>Earn daily Delubux and buy or gift community themes.</p></div>
       <article class="exclusive-theme-card"><div class="exclusive-theme-body"><h2>Daily reward · 10 Delubux</h2><p>Claim once every 24 hours.</p><button class="primary" id="claimDailyReward" onclick="claimDailyDelubux()">Claim 10 🪙</button><div id="dailyRewardMessage" class="theme-message"></div></div></article>
       <div class="section-heading"><h2>Account roles</h2></div><p class="settings-note">Permanent account upgrades. Publisher usernames are green; Bugtester usernames are blue. Admin is reserved and cannot be purchased.</p><div id="roleMarketplaceGrid" class="settings-grid"></div><div id="roleMarketplaceMessage" class="theme-message"></div>
@@ -995,6 +997,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     const message = $("exclusiveThemeMessage");
     if (message) message.textContent = "SFOTH theme unlocked and saved to your account!";
     if (window.showDeluxeToast) window.showDeluxeToast("Theme unlocked!", "SFOTH theme is now available in Settings.");
+    awardDailyTask("unlock_theme");
     return true;
   }
 
@@ -1047,7 +1050,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (name === "gameDetail" && !allPublishedGames.length) loadGames();
     if (name === "admin") loadAdminPanel();
     if (name === "inbox") loadInbox();
-    if (name === "marketplace") loadThemeMarketplace();    if (name === "inbox") loadInbox();
+    if (name === "marketplace") { loadThemeMarketplace(); loadDailyTasks(); }    if (name === "inbox") loadInbox();
   }
 
   function initials(name){
@@ -1262,6 +1265,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     ]);
     currentProfile = profile || null;
     await loadDelubuxWallet();
+    if($("dailyTasksList"))loadDailyTasks();
     currentRoles = (ownedRoleRows || []).map(x=>x.role);
     currentRole = bestRoleFor(currentRoles, role?.role || "user");
     applyExclusiveTheme();
@@ -1295,6 +1299,28 @@ body.light-mode .pilot-welcome{color:#626d80}
     delubuxBalance=Number(data.balance||0);window.deluxPilotUnlocked=!!data.site_pilot_unlocked;window.deluxLastDailyClaim=data.last_daily_claim_at;
     updateDelubuxBalance();renderDailyRewardState();
   }
+  const DAILY_TASKS=[{key:"unlock_theme",title:"Unlock a theme",icon:"🎨"},{key:"create_game",title:"Create a game",icon:"🎮"},{key:"friend_request",title:"Send a friend request",icon:"👥"},{key:"open_listen",title:"Open Listen",icon:"🎵"},{key:"game_chat",title:"Send a message in game chat",icon:"💬"}];
+  async function loadDailyTasks(){
+    const root=$("dailyTasksList");if(!root)return;
+    if(!currentUser||!sb){root.innerHTML='<p class="settings-note">Sign in to track daily tasks.</p>';return;}
+    const {data,error}=await sb.from("delubux_daily_task_claims").select("task_key").eq("user_id",currentUser.id).eq("task_date",new Date().toLocaleDateString("en-CA",{timeZone:"Australia/Sydney"}));
+    if(error){root.innerHTML='<p class="settings-note">Daily tasks are temporarily unavailable.</p>';console.warn(error);return;}
+    const claimed=new Set((data||[]).map(x=>x.task_key));
+    root.innerHTML=DAILY_TASKS.map(t=>'<div class="exclusive-theme-card" style="padding:14px;min-height:0"><div class="exclusive-theme-body" style="padding:0"><h3>'+t.icon+' '+t.title+'</h3><p>Reward: 50 Delubux</p><div class="theme-status">'+(claimed.has(t.key)?'✓ Completed today':'Complete the activity to earn')+'</div></div></div>').join("");
+  }
+  async function awardDailyTask(key){
+    if(!currentUser||!sb)return;
+    const {data,error}=await sb.rpc("delubux_claim_daily_task",{p_task_key:key});
+    if(error){console.warn("Daily task reward failed",error);return;}
+    if(data?.ok){delubuxBalance=Number(data.balance||delubuxBalance);updateDelubuxBalance();toast("Daily task completed!","+50 Delubux added to your wallet.");const m=$("dailyTasksMessage");if(m)m.textContent="You earned 50 Delubux!";await loadDailyTasks();}
+    else if(data?.reason==="claimed"){await loadDailyTasks();}
+  }
+  window.recordListenDailyTask=async function(){
+    if(!currentUser||!sb)return;
+    const {error}=await sb.from("delubux_daily_task_events").insert({user_id:currentUser.id,task_key:"open_listen"});
+    if(error)console.warn("Listen task event failed",error);
+    else setTimeout(()=>awardDailyTask("open_listen"),800);
+  };
   function updateDelubuxBalance(){const el=$("delubuxBalance");if(el)el.textContent="🪙 "+delubuxBalance+" Delubux";}
   function roleLabel(role){return role==="admin"?"Admin":role==="publisher"?"Publisher":role==="bugtester"?"Bugtester":"Deluxe user";}
   function bestRoleFor(roles=[],baseRole="user"){if(baseRole==="admin"||roles.includes("admin"))return "admin";if(roles.includes("publisher"))return "publisher";if(roles.includes("bugtester"))return "bugtester";return baseRole==="moderator"?"moderator":"user";}
@@ -1996,6 +2022,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     $("gameForm").reset();
     $("gameChatEnabled").checked=true;
     setGameFormMessage("Game submitted! It is waiting for admin approval.");
+    awardDailyTask("create_game");
     await loadGames();
   }
 
@@ -2932,7 +2959,7 @@ setInterval(pollPresenceCards,15000);
 async function loadCommunity(){if(!currentUser){openAuth("login");return}await Promise.all([requests(),friends(),groups(),messages()]);await findUsers();await presence();await pollPresenceCards();if(presenceTimer)clearInterval(presenceTimer);presenceTimer=setInterval(presence,25000)}
 window.loadCommunity=loadCommunity;
 async function requests(){if(!currentUser)return;const {data,error}=await sb.from("friend_requests").select("id,sender_id,sender:profiles!friend_requests_sender_id_fkey(username)").eq("recipient_id",currentUser.id).eq("status","pending").order("created_at",{ascending:false});if(error){el("friendRequests").textContent="Unable to load requests.";return}el("friendRequests").innerHTML=(data||[]).map(r=>'<div class="social-row"><div class="grow"><strong>'+escapeHtml(r.sender?.username||"User")+'</strong></div><button class="primary" onclick="respondFriendRequest(\''+r.id+'\',true)">Accept</button><button class="secondary" onclick="respondFriendRequest(\''+r.id+'\',false)">Ignore</button></div>').join("")||'<p class="social-muted">No pending requests.</p>'}
-window.sendFriendRequest=async id=>{if(!currentUser){openAuth("login");return}if(id===currentUser.id)return;const {error}=await sb.from("friend_requests").insert({sender_id:currentUser.id,recipient_id:id});if(error){toast("Friend request",error.code==="23505"?"A request already exists.":error.message);return}toast("Friend request sent","They can accept it from Community.")};
+window.sendFriendRequest=async id=>{if(!currentUser){openAuth("login");return}if(id===currentUser.id)return;const {error}=await sb.from("friend_requests").insert({sender_id:currentUser.id,recipient_id:id});if(error){toast("Friend request",error.code==="23505"?"A request already exists.":error.message);return}toast("Friend request sent","They can accept it from Community.");awardDailyTask("friend_request")};
 window.respondFriendRequest=async(id,accept)=>{const {error}=await sb.from("friend_requests").update({status:accept?"accepted":"rejected"}).eq("id",id).eq("recipient_id",currentUser.id);if(error)return alert(error.message);await requests();await friends();toast(accept?"Friend added":"Request dismissed",accept?"You can now chat.":"The request was dismissed.")};
 async function friends(){if(!currentUser)return;const {data,error}=await sb.from("friendships").select("friend_id,profiles!friendships_friend_id_fkey(username,avatar_url)").eq("user_id",currentUser.id);if(error){el("friendsList").textContent="Unable to load friends.";return}el("friendsList").innerHTML=(data||[]).map(f=>'<div class="social-row"><div class="grow"><strong>'+escapeHtml(f.profiles?.username||"User")+'</strong><br><small class="presence-pill" id="friendPresence-'+f.friend_id+'">Checking status…</small></div><button class="secondary" onclick="openFriendChat(\''+f.friend_id+'\',\''+escapeHtml(f.profiles?.username||"Friend").replace(/'/g,"&#039;")+'\')">Chat</button></div>').join("")||'<p class="social-muted">Add users to start a friends list.</p>'}
 async function findUsers(){if(!currentUser)return;const q=(el("friendSearch")?.value||"").trim();const {data,error}=await sb.from("profiles").select("id,username").ilike("username","%"+q.replace(/[%_]/g,"")+"%").neq("id",currentUser.id).order("username").limit(12);if(error)return;el("friendSearchResults").innerHTML=(data||[]).map(u=>'<div class="social-row"><div class="grow">'+escapeHtml(u.username)+'</div><button class="secondary" onclick="sendFriendRequest(\''+u.id+'\')">＋ Add</button></div>').join("")||'<p class="social-muted">No users found.</p>'}
@@ -3071,7 +3098,7 @@ if(originalGameChannelSubmit)originalGameChannelSubmit.addEventListener("submit"
  if(!c){toast("Message failed","This channel is not ready yet.");return}
  const {data:posted,error}=await sb.from("game_channel_messages").insert({channel_id:c.id,sender_id:currentUser.id,content}).select("id").single();
  if(error){toast("Message not sent",error.message);return}
- el("communityPostInput").value="";await loadGameChannelMessages();await refreshEmailSubscription();notifyEmailSubscribers("game",posted.id);
+ el("communityPostInput").value="";await loadGameChannelMessages();await refreshEmailSubscription();notifyEmailSubscribers("game",posted.id);awardDailyTask("game_chat");
 });
 const oldLoadCommunity=window.loadCommunity;
 window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity();await loadGameServers()};
