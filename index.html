@@ -1191,6 +1191,7 @@ body.light-mode .pilot-welcome{color:#626d80}
   async function loadCurrentProfile(){
     currentProfile = null;
     currentRole = "user";
+    currentRoles = [];
     if (!sb || !currentUser) return;
 
     const [{data: profile}, {data: role}, {data: ownedRoleRows}] = await Promise.all([
@@ -1395,7 +1396,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if(error){grid.innerHTML='<div class="loading">Unable to load users.</div>';console.error(error);return}
     const [{data:roles},{data:ownedRoleRows}]=await Promise.all([sb.from("user_roles").select("user_id,role"),sb.from("user_role_ownership").select("user_id,role")]);const roleMap=new Map((roles||[]).map(r=>[r.user_id,r.role]));const ownedRoleMap=new Map();(ownedRoleRows||[]).forEach(r=>{if(!ownedRoleMap.has(r.user_id))ownedRoleMap.set(r.user_id,[]);ownedRoleMap.get(r.user_id).push(r.role);});
     if(!data?.length){grid.innerHTML='<div class="empty-state"><span>👥</span><h2>No users yet</h2><p>Create the first Deluxe account.</p></div>';return}
-    grid.innerHTML=data.map(u=>{const base=roleMap.get(u.id)||"user";const owned=ownedRoleMap.get(u.id)||[];const r=bestRoleFor(owned,base);return '<article class="user-card" onclick="viewProfile(\''+u.id+'\')"><div class="avatar">'+(u.avatar_url?'<img src="'+escapeHtml(u.avatar_url)+'" alt="">':escapeHtml(initials(u.username)))+'</div><div class="user-name '+roleClass(r)+'">'+escapeHtml(u.username||"User")+'</div><div class="role '+roleClass(r)+'">'+roleLabel(r)+'</div><div class="presence-pill" id="userPresence-'+u.id+'">Checking status…</div>'+(currentUser&&u.id!==currentUser.id?'<div class="social-actions" style="margin-top:12px"><button class="secondary" onclick="event.stopPropagation();sendFriendRequest(\''+u.id+'\')">＋ Add friend</button><button class="secondary" onclick="event.stopPropagation();openFriendChat(\''+u.id+'\',\''+escapeHtml(u.username||"User").replace(/'/g,"&#039;")+'\')">Message</button></div>':"")+'</article>';}).join("");
+    grid.innerHTML=data.map(u=>{const base=roleMap.get(u.id)||"user";const owned=ownedRoleMap.get(u.id)||[];const r=bestRoleFor(owned,base);return '<article class="user-card" onclick="viewProfile(\''+u.id+'\')"><div class="avatar">'+(u.avatar_url?'<img src="'+escapeHtml(u.avatar_url)+'" alt="">':escapeHtml(initials(u.username)))+'</div><div class="user-name '+roleClass(r)+'">'+escapeHtml(u.username||"User")+' '+roleTicksMarkup(owned,base)+'</div><div class="role '+roleClass(r)+'">'+roleLabel(r)+'</div><div class="presence-pill" id="userPresence-'+u.id+'">Checking status…</div>'+(currentUser&&u.id!==currentUser.id?'<div class="social-actions" style="margin-top:12px"><button class="secondary" onclick="event.stopPropagation();sendFriendRequest(\''+u.id+'\')">＋ Add friend</button><button class="secondary" onclick="event.stopPropagation();openFriendChat(\''+u.id+'\',\''+escapeHtml(u.username||"User").replace(/'/g,"&#039;")+'\')">Message</button></div>':"")+'</article>';}).join("");
     if(window.refreshDeluxePresenceCards)window.refreshDeluxePresenceCards();
   }
 
