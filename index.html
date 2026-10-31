@@ -1897,15 +1897,27 @@ body.light-mode .pilot-welcome{color:#626d80}
 
   async function loadPurchasedSeasonalGames(){
     ownedSeasonalGames = [];
-    const section=$("purchasedSeasonalSection"),grid=$("purchasedSeasonalGrid");
-    if(!section||!grid)return;
-    if(!currentUser){section.classList.add("hidden");grid.innerHTML="";return;}
+    if(!currentUser){
+      renderPurchasedSeasonalGames($("gameSearch")?.value||"");
+      return;
+    }
     const {data:ownership,error:ownershipError}=await sb.from("seasonal_bundle_ownership").select("bundle_id").eq("user_id",currentUser.id);
-    if(ownershipError){console.warn("Could not load purchased seasonal games",ownershipError);section.classList.add("hidden");return;}
+    if(ownershipError){
+      console.warn("Could not load purchased seasonal games",ownershipError);
+      renderPurchasedSeasonalGames($("gameSearch")?.value||"");
+      return;
+    }
     const bundleIds=[...new Set((ownership||[]).map(row=>row.bundle_id).filter(Boolean))];
-    if(!bundleIds.length){section.classList.add("hidden");grid.innerHTML="";return;}
+    if(!bundleIds.length){
+      renderPurchasedSeasonalGames($("gameSearch")?.value||"");
+      return;
+    }
     const {data:bundles,error:bundleError}=await sb.from("seasonal_bundles").select("id,pack_name,pack_rarity,game_1_title,game_1_link,game_1_icon,game_1_thumbnail,game_2_title,game_2_link,game_2_icon,game_2_thumbnail,game_3_title,game_3_link,game_3_icon,game_3_thumbnail").in("id",bundleIds);
-    if(bundleError){console.warn("Could not load purchased seasonal bundles",bundleError);section.classList.add("hidden");return;}
+    if(bundleError){
+      console.warn("Could not load purchased seasonal bundles",bundleError);
+      renderPurchasedSeasonalGames($("gameSearch")?.value||"");
+      return;
+    }
     ownedSeasonalGames=(bundles||[]).flatMap(bundle=>[1,2,3].map(n=>({
       key:bundle.id+"-"+n,bundleName:bundle.pack_name,title:bundle["game_"+n+"_title"],
       link:bundle["game_"+n+"_link"],icon:bundle["game_"+n+"_icon"],thumbnail:bundle["game_"+n+"_thumbnail"],
@@ -1913,7 +1925,6 @@ body.light-mode .pilot-welcome{color:#626d80}
     })).filter(game=>game.title&&validGameUrl(game.link)));
     renderPurchasedSeasonalGames($("gameSearch")?.value||"");
   }
-
   function renderPurchasedSeasonalGames(filter=""){
     renderGames(filter);
   }
