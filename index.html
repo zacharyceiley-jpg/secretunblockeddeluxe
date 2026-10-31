@@ -1226,7 +1226,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if(!sb || !currentUser){delubuxBalance=0;updateDelubuxBalance();return;}
     let {data,error}=await sb.from("delubux_wallets").select("*").eq("user_id",currentUser.id).maybeSingle();
     if(error){console.warn(error);return;}
-    if(!data){const created=await sb.from("delubux_wallets").insert({user_id:currentUser.id}).select("*").single();if(created.error){console.warn(created.error);return;}data=created.data;}
+    if(!data){console.warn("Delubux wallet was not provisioned for this account.");return;}
     delubuxBalance=Number(data.balance||0);window.deluxPilotUnlocked=!!data.site_pilot_unlocked;window.deluxLastDailyClaim=data.last_daily_claim_at;
     updateDelubuxBalance();renderDailyRewardState();
   }
@@ -2247,9 +2247,9 @@ flushDeluxePlayTracking();
       sb.from("user_bans").select("user_id,banned_until,reason")
     ]);
     if (error) { console.error(error); return []; }
+    if (error) { console.error(error); return []; }
     const grant = $("adminDelubuxUser");
     if (grant) grant.innerHTML = '<option value="">Select a user…</option>' + (users || []).map(u => '<option value="' + u.id + '">' + escapeHtml(u.username || "User") + '</option>').join("");
-    const now = Date.now();    if (error) { console.error(error); return []; }
     const now = Date.now();
     const banMap = new Map((bans || []).map(b => [b.user_id, b]));
     return (users || []).map(u => {
@@ -2584,7 +2584,7 @@ flushDeluxePlayTracking();
     function speak(text){ if(!speechEnabled || !('speechSynthesis' in window)) return; stopSpeech(); const u=new SpeechSynthesisUtterance(text); u.rate=1; u.pitch=1; window.speechSynthesis.speak(u); }
     function addMessage(role, text, shouldSpeak=false){ const bubble=document.createElement('div'); bubble.className='pilot-msg '+role; const label=document.createElement('small'); label.textContent=role==='user'?'You':'Site Pilot AI'; const content=document.createElement('div'); content.textContent=text; bubble.append(label,content); messagesEl.appendChild(bubble); messagesEl.scrollTop=messagesEl.scrollHeight; if(shouldSpeak) speak(text); }
     function setBusy(value){ busy=value; $p('pilotSend').disabled=value; input.disabled=value; statusEl.textContent=value?'Site Pilot is thinking…':'Ready when you are.'; }
-    launcher.addEventListener('click',async()=>{if(!currentUser){setPanel(true);addMessage('assistant','Please sign in to unlock Site Pilot.');return;}if(!window.deluxPilotUnlocked){const ok=confirm('Unlock Site Pilot forever for 5 Delubux?');if(!ok)return;const {data,error}=await sb.rpc('delubux_unlock_site_pilot');if(error){alert(error.message);return;}delubuxBalance=Number(data.balance||0);window.deluxPilotUnlocked=true;updateDelubuxBalance();}setPanel(panel.classList.contains('hidden'));});    launcher.addEventListener('click',()=>setPanel(panel.classList.contains('hidden'))); $p('pilotClose').addEventListener('click',()=>setPanel(false)); $p('pilotStopSpeech').addEventListener('click',stopSpeech);
+    launcher.addEventListener('click',async()=>{if(!currentUser){setPanel(true);addMessage('assistant','Please sign in to unlock Site Pilot.');return;}if(!window.deluxPilotUnlocked){const ok=confirm('Unlock Site Pilot forever for 5 Delubux?');if(!ok)return;const {data,error}=await sb.rpc('delubux_unlock_site_pilot');if(error){alert(error.message);return;}delubuxBalance=Number(data.balance||0);window.deluxPilotUnlocked=true;updateDelubuxBalance();}setPanel(panel.classList.contains('hidden'));}); $p('pilotClose').addEventListener('click',()=>setPanel(false)); $p('pilotStopSpeech').addEventListener('click',stopSpeech);
     $p('pilotSpeechToggle').addEventListener('click',()=>{ speechEnabled=!speechEnabled; const b=$p('pilotSpeechToggle'); b.classList.toggle('active',speechEnabled); b.setAttribute('aria-pressed',String(speechEnabled)); b.textContent=speechEnabled?'🔊 Read replies: On':'🔇 Read replies: Off'; if(!speechEnabled) stopSpeech(); });
     $p('pilotClear').addEventListener('click',()=>{stopSpeech();history=[];messagesEl.replaceChildren();const w=document.createElement('div');w.className='pilot-welcome';w.textContent='Chat cleared! What can I help you with?';messagesEl.appendChild(w);statusEl.textContent='Ready when you are.';});
     $p('pilotForm').addEventListener('submit',async e=>{
