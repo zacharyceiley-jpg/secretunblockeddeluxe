@@ -1910,8 +1910,10 @@ body.light-mode .pilot-welcome{color:#626d80}
     const q=String(filter||"").trim().toLocaleLowerCase();
     const games=ownedSeasonalGames.filter(game=>!q||String(game.title).toLocaleLowerCase().includes(q)||String(game.bundleName||"").toLocaleLowerCase().includes(q));
     grid.innerHTML=games.map(game=>{
-      const image=game.thumbnail||game.icon;
-      return '<a class="game-card" href="'+escapeHtml(game.link)+'" target="_blank" rel="noopener" style="text-decoration:none;color:inherit"><div class="game-thumb">'+(image?'<img src="'+escapeHtml(image)+'" alt="">':'🎮')+'</div><div class="game-card-body" style="opacity:1;inset:auto 0 0;min-height:64px;padding:10px;background:linear-gradient(180deg,transparent,rgba(0,0,0,.9))"><div class="game-title">'+escapeHtml(game.title)+'</div><div class="small-note">🔒 '+escapeHtml(game.bundleName)+' · Seasonal exclusive</div></div></a>';
+      const title=escapeHtml(game.title||"Untitled Game");
+      const image=game.icon||game.thumbnail||"";
+      const thumb=image&&validGameUrl(image)?'<img src="'+escapeHtml(image)+'" alt="'+title+' icon" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">':"🎮";
+      return '<article class="game-card" tabindex="0" role="button" aria-label="Play '+title+'" onclick="openSeasonalGame(\''+game.key+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openSeasonalGame(\''+game.key+'\')}"><div class="game-thumb">'+thumb+'</div><div class="game-card-body"><div class="game-title">'+title+'</div><div class="game-meta">Seasonal exclusive · '+escapeHtml(game.bundleName)+'</div><div class="game-card-actions"><button class="primary" onclick="event.stopPropagation();openSeasonalGame(\''+game.key+'\')">▶ Play</button></div></div></article>';
     }).join("")||'<p class="small-note">No purchased seasonal games match your search.</p>';
     section.classList.toggle("hidden",ownedSeasonalGames.length===0);
   }
@@ -2037,6 +2039,30 @@ body.light-mode .pilot-welcome{color:#626d80}
   let inboxRefreshTimer = null;
   let banCheckTimer = null;
 
+
+  function openSeasonalGame(key){
+    const game=ownedSeasonalGames.find(item=>item.key===key);
+    if(!game||!validGameUrl(game.link))return alert("This seasonal game link is unavailable.");
+    flushDeluxePlayTracking();
+    currentGame={
+      id:"seasonal-"+game.key,
+      title:game.title||"Seasonal Game",
+      description:"Included in the "+(game.bundleName||"seasonal")+" bundle.",
+      game_url:game.link,
+      icon_url:game.icon||null,
+      thumbnail_url:game.thumbnail||null,
+      profiles:{username:"Secret Unblocked Deluxe"},
+      chat_enabled:false,
+      seasonal:true
+    };
+    rememberDeluxeGame(currentGame.id);
+    startDeluxePlayTracking(currentGame.id);
+    clearInterval(gameChatRefreshTimer);
+    if(sfothPlayTimer)clearTimeout(sfothPlayTimer);
+    sfothPlayTimer=null;
+    showPage("game");
+    renderGamePage();
+  }
 
   async function openGame(id){
 if (!sb) return;
