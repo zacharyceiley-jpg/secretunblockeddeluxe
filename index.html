@@ -556,17 +556,21 @@ body.light-mode .pilot-welcome{color:#626d80}
             <label>Pack price (Delubux)<input id="seasonalPackPrice" type="number" min="0" step="1" required placeholder="500"></label>
             <label>Pack rarity<select id="seasonalPackRarity" required><option value="halloween">🎃 Halloween</option><option value="winter">❄️ Winter</option><option value="spring">🌸 Spring</option><option value="festive">🎅 Festive</option><option value="easter">🥚 Easter</option></select></label>
             <div></div>
-            <label>Game 1<select id="seasonalGame1" required><option value="">Choose game…</option></select></label>
-            <label>Game 1 thumbnail URL<input id="seasonalGame1Thumb" type="url" placeholder="https://…"></label>
+            <p class="seasonal-full"><strong>Custom Delubux-exclusive games</strong> — these are separate listings and do not need to exist in the main Games catalogue.</p>
+            <label>Game 1 name<input id="seasonalGame1Title" maxlength="80" required placeholder="Exclusive game name"></label>
+            <label>Game 1 link<input id="seasonalGame1Link" type="url" required placeholder="https://…"></label>
             <label>Game 1 icon URL<input id="seasonalGame1Icon" type="url" placeholder="https://…"></label>
+            <label>Game 1 thumbnail URL<input id="seasonalGame1Thumb" type="url" placeholder="https://…"></label>
             <label>Game 1 purchase render URL<input id="seasonalGame1Render" type="url" placeholder="https://…"></label>
-            <label>Game 2<select id="seasonalGame2" required><option value="">Choose game…</option></select></label>
-            <label>Game 2 thumbnail URL<input id="seasonalGame2Thumb" type="url" placeholder="https://…"></label>
+            <label>Game 2 name<input id="seasonalGame2Title" maxlength="80" required placeholder="Exclusive game name"></label>
+            <label>Game 2 link<input id="seasonalGame2Link" type="url" required placeholder="https://…"></label>
             <label>Game 2 icon URL<input id="seasonalGame2Icon" type="url" placeholder="https://…"></label>
+            <label>Game 2 thumbnail URL<input id="seasonalGame2Thumb" type="url" placeholder="https://…"></label>
             <label>Game 2 purchase render URL<input id="seasonalGame2Render" type="url" placeholder="https://…"></label>
-            <label>Game 3<select id="seasonalGame3" required><option value="">Choose game…</option></select></label>
-            <label>Game 3 thumbnail URL<input id="seasonalGame3Thumb" type="url" placeholder="https://…"></label>
+            <label>Game 3 name<input id="seasonalGame3Title" maxlength="80" required placeholder="Exclusive game name"></label>
+            <label>Game 3 link<input id="seasonalGame3Link" type="url" required placeholder="https://…"></label>
             <label>Game 3 icon URL<input id="seasonalGame3Icon" type="url" placeholder="https://…"></label>
+            <label>Game 3 thumbnail URL<input id="seasonalGame3Thumb" type="url" placeholder="https://…"></label>
             <label>Game 3 purchase render URL<input id="seasonalGame3Render" type="url" placeholder="https://…"></label>
             <div class="seasonal-full"><button class="primary" type="submit">＋ Publish Seasonal Bundle</button> <button class="secondary" type="button" onclick="resetSeasonalBundleForm()">Clear form</button><div id="seasonalBundleAdminStatus" class="auth-message" role="status"></div></div>
           </form>
@@ -1318,11 +1322,11 @@ body.light-mode .pilot-welcome{color:#626d80}
     const season=SEASONAL_META[bundle.pack_rarity]||SEASONAL_META.halloween;
     const renders=[bundle.game_1_purchase_render,bundle.game_2_purchase_render,bundle.game_3_purchase_render];
     const imgs=renders.map((url,i)=>url&&validGameUrl(url)?'<img class="seasonal-bundle-render" src="'+escapeHtml(url)+'" alt="Game '+(i+1)+' purchase render">':'<div class="seasonal-bundle-placeholder">'+season.emoji+'</div>').join("");
-    const gameNames=[bundle.game1?.title,bundle.game2?.title,bundle.game3?.title].filter(Boolean);
+    const gameNames=[bundle.game_1_title,bundle.game_2_title,bundle.game_3_title].filter(Boolean);
     return '<article class="seasonal-bundle-card" data-season="'+escapeHtml(bundle.pack_rarity)+'"><div class="seasonal-bundle-head"><span>'+season.emoji+' '+season.label.toUpperCase()+'</span><span>'+season.emoji+'</span></div><div class="seasonal-bundle-triangle">'+imgs+'</div><div class="seasonal-bundle-body"><div class="seasonal-bundle-rarity">'+season.rarity+'</div><h3>'+escapeHtml(bundle.pack_name)+'</h3><div class="seasonal-bundle-games">'+(gameNames.length?gameNames.map(escapeHtml).join(' · '):'Three-game collection')+'</div><div class="seasonal-bundle-actions">'+(showAdmin?'<button class="danger-button" onclick="deleteSeasonalBundle(\''+bundle.id+'\')">Delete bundle</button>':(owned?'<button class="secondary" disabled>Owned</button>':'<button class="primary" onclick="purchaseSeasonalBundle(\''+bundle.id+'\')">Purchase · '+Number(bundle.pack_price).toLocaleString()+' 🪙</button>')+'<button class="secondary" onclick="giftSeasonalBundle(\''+bundle.id+'\')">🎁 Gift · '+Math.floor(Number(bundle.pack_price)*.85).toLocaleString()+' 🪙</button>')+'</div></div></article>';
   }
   async function fetchSeasonalBundles(){
-    const {data,error}=await sb.from("seasonal_bundles").select("*,game1:games!seasonal_bundles_game_1_id_fkey(title),game2:games!seasonal_bundles_game_2_id_fkey(title),game3:games!seasonal_bundles_game_3_id_fkey(title)").eq("is_published",true).order("created_at",{ascending:false});
+    const {data,error}=await sb.from("seasonal_bundles").select("*").eq("is_published",true).order("created_at",{ascending:false});
     if(error)throw error;return data||[];
   }
   async function loadSeasonalMarketplace(){
@@ -1349,26 +1353,22 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
   async function loadAdminSeasonalBundles(){
     if(currentRole!=="admin")return;
-    const [{data:games,error:gameError},{data:bundles,error:bundleError}]=await Promise.all([
-      sb.from("games").select("id,title,status").eq("status","published").order("title"),
-      sb.from("seasonal_bundles").select("*,game1:games!seasonal_bundles_game_1_id_fkey(title),game2:games!seasonal_bundles_game_2_id_fkey(title),game3:games!seasonal_bundles_game_3_id_fkey(title)").order("created_at",{ascending:false})
-    ]);
+    const {data:bundles,error}=await sb.from("seasonal_bundles").select("*").order("created_at",{ascending:false});
     const status=$("seasonalBundleAdminStatus");
-    if(gameError||bundleError){if(status)status.textContent=(gameError||bundleError).message;return;}
-    for(let n=1;n<=3;n++){const select=$("seasonalGame"+n);if(select){const old=select.value;select.innerHTML='<option value="">Choose game…</option>'+(games||[]).map(g=>'<option value="'+g.id+'">'+escapeHtml(g.title||"Untitled Game")+'</option>').join("");if(old)select.value=old;}}
-    const grid=$("adminSeasonalBundles");if(grid)grid.innerHTML=(bundles||[]).map(b=>seasonalBundleMarkup({...b,game1:b.game1,game2:b.game2,game3:b.game3},false,true)).join("")||'<div class="empty-state">No seasonal bundles created yet.</div>';
+    if(error){if(status)status.textContent=error.message;return;}
+    const grid=$("adminSeasonalBundles");if(grid)grid.innerHTML=(bundles||[]).map(b=>seasonalBundleMarkup(b,false,true)).join("")||'<div class="empty-state">No seasonal bundles created yet.</div>';
   }
   function setSeasonalAdminStatus(message,isError=false){const el=$("seasonalBundleAdminStatus");if(el){el.textContent=message;el.style.color=isError?"#ff7b7b":"var(--muted)";}}
   function resetSeasonalBundleForm(){const form=$("seasonalBundleForm");if(form)form.reset();setSeasonalAdminStatus("");}
   async function saveSeasonalBundle(event){
     event.preventDefault();if(!currentUser||currentRole!=="admin")return setSeasonalAdminStatus("Admin access required.",true);
-    const ids=[1,2,3].map(n=>$("seasonalGame"+n).value);
-    if(ids.some(x=>!x)||new Set(ids).size!==3)return setSeasonalAdminStatus("Choose three different games.",true);
     const pack_name=$("seasonalPackName").value.trim(),pack_price=Number($("seasonalPackPrice").value),pack_rarity=$("seasonalPackRarity").value;
     if(!pack_name||!Number.isSafeInteger(pack_price)||pack_price<0)return setSeasonalAdminStatus("Enter a valid pack name and whole-number price.",true);
     const row={pack_name,pack_price,pack_rarity,created_by:currentUser.id,is_published:true};
     for(let n=1;n<=3;n++){
-      row["game_"+n+"_id"]=ids[n-1];
+      const title=$("seasonalGame"+n+"Title").value.trim(),link=$("seasonalGame"+n+"Link").value.trim();
+      if(!title||!link||!validGameUrl(link))return setSeasonalAdminStatus("Each custom game needs a name and a valid HTTP or HTTPS game link.",true);
+      row["game_"+n+"_title"]=title;row["game_"+n+"_link"]=link;
       for(const [suffix,field] of [["thumbnail","Thumb"],["icon","Icon"],["purchase_render","Render"]]){
         const value=$("seasonalGame"+n+field).value.trim();
         if(value&&!validGameUrl(value))return setSeasonalAdminStatus("All image links must be valid HTTP or HTTPS URLs.",true);
@@ -1379,7 +1379,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     const {error}=await sb.from("seasonal_bundles").insert(row);
     if(button){button.disabled=false;button.textContent="＋ Publish Seasonal Bundle";}
     if(error)return setSeasonalAdminStatus(error.message,true);
-    setSeasonalAdminStatus("Seasonal bundle published!");
+    setSeasonalAdminStatus("Delubux-exclusive bundle published!");
     resetSeasonalBundleForm();await loadAdminSeasonalBundles();await loadSeasonalMarketplace();
   }
   async function deleteSeasonalBundle(id){
