@@ -1399,7 +1399,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     root.appendChild(section);
   }
 
-  async function loadThemeMarketplace(){  async function loadThemeMarketplace(){
+  async function loadThemeMarketplace(){
     await loadSeasonalMarketplace();
     await loadRoleMarketplace();
     const grid=$("themeMarketplaceGrid");if(!grid)return;if(!currentUser){grid.textContent="Sign in to browse themes.";return;}
@@ -2308,7 +2308,7 @@ flushDeluxePlayTracking();
     }
   }
 
-  async function loadAdminPanel(){
+  async async function loadAdminPanel(){
     const access = $("adminAccessMessage");
     const dashboard = $("adminDashboard");
 
