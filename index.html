@@ -401,10 +401,6 @@ body.light-mode .pilot-welcome{color:#626d80}
         </select>
         <button class="secondary" type="button" onclick="saveDeluxePreferredGenres()">Save genres</button>
       </div>
-      <section id="purchasedSeasonalSection" class="game-discovery-section hidden">
-        <div class="section-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Purchased Games</h2><p class="small-note">Seasonal games included in bundles you've purchased or received.</p></div></div>
-        <div id="purchasedSeasonalGrid" class="game-discovery-grid"></div>
-      </section>
       <div id="publicGamesSection">
         <div class="section-heading"><div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div></div>
         <div id="gameGrid" class="user-grid"><div class="loading">Loading games…</div></div>
@@ -1633,14 +1629,28 @@ body.light-mode .pilot-welcome{color:#626d80}
     const fallbackPicks = publicGames.filter(g => !recentIds.has(g.id) && !recommended.some(p => p.id === g.id) && !trendingIds.has(g.id)).slice(0,12);
     const picksForYou = recommended.length ? recommended : (fallbackPicks.length ? fallbackPicks : publicGames.slice(0,12));
     const fullLibrary = [...publicGames];
+    const seasonalGames = ownedSeasonalGames.filter(game =>
+      !q || String(game.title || "").toLocaleLowerCase().includes(q) ||
+      String(game.bundleName || "").toLocaleLowerCase().includes(q)
+    );
+    const seasonalCards = seasonalGames.map(game => {
+      const title = escapeHtml(game.title || "Untitled Game");
+      const image = game.icon || game.thumbnail || "";
+      const thumb = image && validGameUrl(image)
+        ? '<img src="' + escapeHtml(image) + '" alt="' + title + ' icon" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">'
+        : "🎮";
+      return '<article class="game-card" tabindex="0" role="button" aria-label="Play ' + title + '" onclick="openSeasonalGame(\\'' + game.key + '\\')" onkeydown="if(event.key===\\'Enter\\'||event.key===\\' \\'){event.preventDefault();openSeasonalGame(\\'' + game.key + '\\')}"><div class="game-thumb">' + thumb + '</div><div class="game-card-body"><div class="game-title">' + title + '</div><div class="game-card-actions"><button class="primary" onclick="event.stopPropagation();openSeasonalGame(\\'' + game.key + '\\')">▶ Play</button></div></div></article>';
+    }).join("");
+    const purchasedSection = seasonalGames.length ? '<section class="game-discovery-section" id="purchasedSeasonalSection"><div class="section-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Purchased Games</h2></div></div><div class="game-discovery-grid" id="purchasedSeasonalGrid">' + seasonalCards + '</div></section>' : "";
     $("gameGrid").innerHTML =
       section("Continue","RECENTLY PLAYED",recentlyPlayed,"continueGames") +
       section("Trending","MOST PLAYED",trending,"trendingGames") +
       section("Recently added","FRESH FINDS",recentlyAdded,"recentlyAddedGames") +
       section("Picks for you","YOUR TASTE",picksForYou,"picksForYouGames") +
+      purchasedSection +
       section("All games","FULL LIBRARY",fullLibrary,"allGames") ||
       '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
-    if (!publicGames.length) $("gameGrid").innerHTML = '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
+    if (!publicGames.length && !seasonalGames.length) $("gameGrid").innerHTML = '<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
   }
 
   const DELUXE_PLAYTIME_KEY = "deluxeGamePlaytimeV1";
@@ -1905,17 +1915,7 @@ body.light-mode .pilot-welcome{color:#626d80}
   }
 
   function renderPurchasedSeasonalGames(filter=""){
-    const section=$("purchasedSeasonalSection"),grid=$("purchasedSeasonalGrid");
-    if(!section||!grid)return;
-    const q=String(filter||"").trim().toLocaleLowerCase();
-    const games=ownedSeasonalGames.filter(game=>!q||String(game.title).toLocaleLowerCase().includes(q)||String(game.bundleName||"").toLocaleLowerCase().includes(q));
-    grid.innerHTML=games.map(game=>{
-      const title=escapeHtml(game.title||"Untitled Game");
-      const image=game.icon||game.thumbnail||"";
-      const thumb=image&&validGameUrl(image)?'<img src="'+escapeHtml(image)+'" alt="'+title+' icon" loading="lazy" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">':"🎮";
-      return '<article class="game-card" tabindex="0" role="button" aria-label="Play '+title+'" onclick="openSeasonalGame(\''+game.key+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openSeasonalGame(\''+game.key+'\')}"><div class="game-thumb">'+thumb+'</div><div class="game-card-body"><div class="game-title">'+title+'</div><div class="game-meta">Seasonal exclusive · '+escapeHtml(game.bundleName)+'</div><div class="game-card-actions"><button class="primary" onclick="event.stopPropagation();openSeasonalGame(\''+game.key+'\')">▶ Play</button></div></div></article>';
-    }).join("")||'<p class="small-note">No purchased seasonal games match your search.</p>';
-    section.classList.toggle("hidden",ownedSeasonalGames.length===0);
+    renderGames(filter);
   }
 
   function openGameUploader(){
