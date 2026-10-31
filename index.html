@@ -2247,7 +2247,6 @@ flushDeluxePlayTracking();
       sb.from("user_bans").select("user_id,banned_until,reason")
     ]);
     if (error) { console.error(error); return []; }
-    if (error) { console.error(error); return []; }
     const grant = $("adminDelubuxUser");
     if (grant) grant.innerHTML = '<option value="">Select a user…</option>' + (users || []).map(u => '<option value="' + u.id + '">' + escapeHtml(u.username || "User") + '</option>').join("");
     const now = Date.now();
