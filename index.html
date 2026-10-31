@@ -229,6 +229,7 @@ body.light-mode .pilot-welcome{color:#626d80}
 
     <nav class="nav">
       <a href="#" data-page="home">Home</a>
+      <a href="#" data-page="marketplace">🛍️ Marketplace</a>
       <a href="#" data-page="games">Games</a>
       
       <a href="#" data-page="users">Users</a><a href="#" data-page="community">Community</a>
@@ -239,6 +240,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     </nav>
 
     <div class="account-area">
+      <button id="delubuxBalance" class="account-button" type="button" onclick="showPage('marketplace')">🪙 0 Delubux</button>
       <button id="accountButton" class="account-button">Sign In</button>
       <button id="menuButton" class="icon-button" aria-label="Open menu">☰</button>
     </div>
@@ -286,6 +288,12 @@ body.light-mode .pilot-welcome{color:#626d80}
       </div>
     </section>
 
+
+    <section id="marketplacePage" class="page">
+      <div class="page-title"><p class="eyebrow">DELUXE ECONOMY</p><h1>🪙 Delubux Marketplace</h1><p>Earn daily Delubux and buy or gift community themes.</p></div>
+      <article class="exclusive-theme-card"><div class="exclusive-theme-body"><h2>Daily reward · 10 Delubux</h2><p>Claim once every 24 hours.</p><button class="primary" id="claimDailyReward" onclick="claimDailyDelubux()">Claim 10 🪙</button><div id="dailyRewardMessage" class="theme-message"></div></div></article>
+      <div class="section-heading"><h2>User-created themes</h2></div><p class="settings-note">Buy for 6 Delubux or gift an owned theme for 5 Delubux.</p><div id="themeMarketplaceGrid" class="settings-grid"></div>
+    </section>
     <section id="settingsPage" class="page">
       <div class="page-title">
         <p class="eyebrow">PERSONALISATION</p><h1>Settings</h1>
