@@ -1919,7 +1919,7 @@ body.light-mode .pilot-welcome{color:#626d80}
     if (!sb) return;
     $("gameGrid").innerHTML = '<div class="loading">Loading games…</div>';
 
-    let publicQuery = sb.from("games").select("id,title,description,thumbnail_url,icon_url,discord_url,fandom_url,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,total_playtime,profiles(username)");
+    let publicQuery = sb.from("games").select("id,title,description,thumbnail_url,icon_url,discord_url,fandom_url,promo_videos,game_url,status,created_at,updated_at,creator_id,chat_enabled,tags,age_recommendation,total_playtime,profiles(username)");
     if(currentRole!=="bugtester" && currentRole!=="admin")publicQuery=publicQuery.eq("status","published");
     const publicResult = await publicQuery.order("created_at",{ascending:false});
 
