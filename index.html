@@ -3169,14 +3169,16 @@ flushDeluxePlayTracking();
   };
 
   if (sb) {
-    sb.auth.onAuthStateChange((event, session) => {
-      // Defer profile/database work until Supabase releases its auth lock.
+    sb.auth.onAuthStateChange(() => {
+      // Match the pre-redesign Deluxe flow: after Supabase releases its auth
+      // lock, read the authoritative persisted session instead of trusting
+      // the event payload (which can be stale during startup restoration).
       setTimeout(() => {
-        refreshSession(session || null, true).catch(err => console.error("Session state update failed:", err));
+        refreshSession().catch(err => console.error("Session refresh error:", err));
       }, 0);
     });
-    // Do an explicit startup read too. This covers browsers where the initial
-    // auth event is delayed or missed while the page is being initialized.
+    // Keep an explicit startup read as a fallback if the initial auth event
+    // is delayed or missed. refreshSession's sequence guard prevents stale UI updates.
     refreshSession().catch(err => console.error("Startup session restore failed:",err));
   }
   // Save active play sessions periodically, not only when the player exits.
