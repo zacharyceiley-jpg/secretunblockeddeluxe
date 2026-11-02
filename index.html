@@ -337,7 +337,20 @@ body:has(.deluxe-sidebar:hover) .deluxe-sidebar,body:has(.deluxe-sidebar:focus-w
 body.light-mode .deluxe-topbar,body.light-mode .deluxe-sidebar{background:rgba(255,255,255,.94)}
 body.light-mode .game-discovery-grid .game-card{background:#fff}
 body.light-mode .game-detail-description-card{background:#fff}
-</style>
+/* Friends rail and game ratings */
+.games-friends-bar{margin:0 0 22px;padding:15px 16px 13px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(110deg,rgba(53,208,127,.07),var(--panel) 55%);overflow:hidden}
+.friends-bar-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px}.friends-bar-heading strong{font-size:15px}
+.friends-bar-list{display:flex;gap:13px;overflow-x:auto;padding:2px 2px 7px;scrollbar-width:thin}
+.friend-mini-card{flex:0 0 74px;display:flex;flex-direction:column;align-items:center;gap:6px;padding:5px 3px;border:1px solid transparent;border-radius:12px;background:transparent;color:var(--text);cursor:pointer}
+.friend-mini-card:hover{background:var(--panel2);border-color:var(--line)}
+.friend-mini-avatar{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;position:relative;background:var(--panel2);border:2px solid var(--line);font-weight:800;overflow:visible}
+.friend-mini-avatar img{width:100%;height:100%;border-radius:50%;object-fit:cover}
+.friend-online-dot{position:absolute;right:-1px;bottom:0;width:13px;height:13px;border:2px solid var(--panel);border-radius:50%;background:#737b85}.friend-online-dot.online{background:#28d878;box-shadow:0 0 9px #28d87888}
+.friend-mini-name{max-width:74px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:700}
+.game-rating-panel{margin:22px 0;padding:17px 19px;border:1px solid var(--line);border-radius:15px;background:var(--panel)}
+.game-rating-panel h3{margin:0 0 8px;font-size:16px}.game-rating-summary{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;margin-bottom:11px}.game-rating-summary strong{font-size:20px;color:#facc15}
+.game-rating-stars{display:flex;gap:5px;flex-wrap:wrap}.game-rating-star{border:1px solid var(--line);background:var(--panel2);color:#77808a;border-radius:9px;width:42px;height:40px;font-size:23px;cursor:pointer;transition:.15s}
+.game-rating-star:hover,.game-rating-star.selected{color:#facc15;border-color:#d4a72c;background:rgba(250,204,21,.1)}.game-rating-star:disabled{opacity:.5;cursor:not-allowed}.game-rating-note{font-size:12px;color:var(--muted);margin-top:9px}</style>
 <style id="deluxeSocialStyles">
 .social-layout{display:grid;grid-template-columns:minmax(220px,.7fr) minmax(0,1.5fr);gap:18px;align-items:start}.social-panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:17px;min-width:0}.social-panel h2,.social-panel h3{margin:0 0 12px}.social-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.social-row:last-child{border-bottom:0}.social-row .grow{flex:1;min-width:0}.social-row small,.social-muted{color:var(--muted);font-size:12px}.social-input,.social-select,.social-textarea{width:100%;padding:11px 12px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);margin:5px 0 10px}.social-textarea{min-height:75px;resize:vertical}.social-feed{display:grid;gap:9px;max-height:440px;overflow:auto;margin:12px 0}.social-post{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px}.social-post p{white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;line-height:1.5}.social-channel-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.social-channel-tabs button.active{background:var(--accent);border-color:var(--accent)}.presence-pill{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:12px}.presence-pill:before{content:"";width:7px;height:7px;border-radius:50%;background:#747b88}.presence-pill.online:before{background:#4ade80}.deluxe-toast{position:fixed;top:18px;right:18px;bottom:auto;z-index:2147483647;max-width:min(390px,calc(100vw - 36px));background:#171b24;border:1px solid var(--accent);box-shadow:0 18px 55px #0008;border-radius:14px;padding:15px 17px;pointer-events:auto}.deluxe-toast strong{display:block;margin-bottom:5px}.deluxe-toast p{margin:0;color:var(--muted);line-height:1.45;font-size:14px}.game-player-shell:fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#000!important;z-index:1}.game-player-shell:fullscreen .game-player-frame{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important}.game-player-shell:fullscreen .deluxe-toast{position:fixed;top:18px;right:18px;bottom:auto;z-index:2147483647}@media(max-width:760px){.social-layout{grid-template-columns:1fr}}
 </style><style id="deluxeDiscoverStyles">
@@ -498,6 +511,7 @@ body.light-mode .game-detail-description-card{background:#fff}
         <h1>Games</h1>
         <p>Browse published games, play your favourites, or add your own game.</p>
       </div>
+      <section id="gamesFriendsBar" class="games-friends-bar" aria-label="Your friends"><div class="friends-bar-heading"><strong>Friends</strong><span class="small-note">Sign in to see who is around</span></div><div class="friends-bar-list"><span class="small-note">Your friends will appear here.</span></div></section>
       <div class="game-toolbar" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
         <input id="gameSearch" class="game-search" type="search" placeholder="Search games…" style="flex:1;min-width:190px">
         <button class="primary" id="openGameUploader" type="button" title="Add a game" aria-label="Add a game">＋ Add game</button>
@@ -3378,5 +3392,62 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
   refreshSidebar();
 })();
 </script>
-</body>
+<script id="deluxeFriendsAndRatings">
+(() => {
+ const $=id=>document.getElementById(id), ratingCache=new Map();let friendsBusy=false;
+ const info=id=>ratingCache.get(id)||{avg:0,count:0,mine:0};
+ async function loadRatings(){
+  if(!sb)return;
+  const {data,error}=await sb.from("game_ratings").select("game_id,user_id,rating");
+  if(error){console.warn("Ratings unavailable",error.message);return;}
+  ratingCache.clear();
+  (data||[]).forEach(x=>{const v=ratingCache.get(x.game_id)||{total:0,count:0,mine:0};v.total+=Number(x.rating)||0;v.count++;if(currentUser&&x.user_id===currentUser.id)v.mine=Number(x.rating)||0;ratingCache.set(x.game_id,v);});
+  ratingCache.forEach(v=>v.avg=v.count?v.total/v.count:0);
+  if($("gamesPage")?.classList.contains("active"))window.renderGames?.($("gameSearch")?.value||"");
+ }
+ function ratingWidget(g){
+  const r=info(g.id),avg=r.avg||Number(g.average_rating||g.rating||0);
+  const stars=Array.from({length:5},(_,i)=>'<button type="button" class="game-rating-star '+(r.mine>=i+1?'selected':'')+'" '+(!currentUser?'disabled':'')+' aria-label="Rate '+(i+1)+' out of 5" onclick="submitGameRating(\''+g.id+'\','+(i+1)+')">'+(r.mine>=i+1?'★':'☆')+'</button>').join("");
+  return '<section class="game-rating-panel" id="gameRatingPanel"><h3>Rate this game</h3><div class="game-rating-summary"><strong>★ '+(avg?avg.toFixed(1):"—")+'</strong><span>'+(r.count?r.count+' '+(r.count===1?'rating':'ratings'):'No ratings yet')+'</span></div><div class="game-rating-stars">'+stars+'</div><div class="game-rating-note">'+(currentUser?(r.mine?'Your rating: '+r.mine+'/5 · Select a star to update it':'Choose 1–5 stars. You can change your rating later.'):'Sign in to rate this game.')+'</div></section>';
+ }
+ window.submitGameRating=async(id,value)=>{
+  if(!currentUser){openAuth("login");return;}const score=Number(value);if(!Number.isInteger(score)||score<1||score>5)return;
+  const {error}=await sb.from("game_ratings").upsert({game_id:id,user_id:currentUser.id,rating:score,updated_at:new Date().toISOString()},{onConflict:"game_id,user_id"});
+  if(error){toast("Rating not saved",error.message);return;}toast("Rating saved","Thanks for rating this game!");await loadRatings();
+  if($("gameDetailPage")?.classList.contains("active"))window.openGameDetails(id);
+ };
+ const previousCard=window.renderLibraryCard;
+ window.renderLibraryCard=function(g){
+  let html=previousCard?previousCard(g):"";const r=info(g.id),avg=r.avg||Number(g.average_rating||g.rating||0);
+  return html.replace(/<div class="game-card-rating">[\s\S]*?<\/div>/,'<div class="game-card-rating">'+(avg?'★ '+avg.toFixed(1):'☆ Not rated')+(r.count?' · '+r.count:'')+'</div>');
+ };
+ const previousDetails=window.openGameDetails;
+ window.openGameDetails=function(id){
+  if(previousDetails)previousDetails(id);const g=allPublishedGames.find(x=>x.id===id),root=$("gameDetailRoot");if(!g||!root)return;
+  $("gameRatingPanel")?.remove();const play=root.querySelector(".game-detail-play");
+  if(play)play.insertAdjacentHTML("beforebegin",ratingWidget(g));else root.insertAdjacentHTML("beforeend",ratingWidget(g));
+ };
+ async function loadFriends(){
+  const root=$("gamesFriendsBar");if(!root||friendsBusy)return;friendsBusy=true;
+  try{
+   const list=root.querySelector(".friends-bar-list"),hint=root.querySelector(".friends-bar-heading .small-note");
+   if(!currentUser){hint.textContent="Sign in to see who is around";list.innerHTML='<span class="small-note">Sign in and add friends to see them here.</span>';return;}
+   const {data,error}=await sb.from("friendships").select("friend_id,profiles!friendships_friend_id_fkey(username,avatar_url)").eq("user_id",currentUser.id);
+   if(error){list.innerHTML='<span class="small-note">Could not load your friends.</span>';return;}
+   const fs=(data||[]).map(x=>({id:x.friend_id,p:x.profiles||{}}));hint.textContent=fs.length?fs.length+" friends":"Your friends will appear here";
+   if(!fs.length){list.innerHTML='<span class="small-note">No friends yet. Add people from Community.</span>';return;}
+   const {data:ps}=await sb.from("user_presence").select("user_id,online,updated_at").in("user_id",fs.map(x=>x.id));
+   const pm=new Map((ps||[]).map(x=>[x.user_id,x]));
+   const online=id=>{const p=pm.get(id);return !!p?.online&&Date.now()-new Date(p.updated_at).getTime()<65000;};
+   fs.sort((a,b)=>Number(online(b.id))-Number(online(a.id))||String(a.p.username||"").localeCompare(String(b.p.username||"")));
+   list.innerHTML=fs.map(f=>{const name=String(f.p.username||"Friend"),pic=f.p.avatar_url?'<img src="'+escapeHtml(f.p.avatar_url)+'" alt="">':escapeHtml((name[0]||"?").toUpperCase()),on=online(f.id);return '<button type="button" class="friend-mini-card" onclick="viewProfile(\''+f.id+'\')" title="'+escapeHtml(name)+(on?' · Online':' · Offline')+'"><span class="friend-mini-avatar">'+pic+'<i class="friend-online-dot '+(on?'online':'')+'"></i></span><span class="friend-mini-name">'+escapeHtml(name)+'</span></button>';}).join("");
+  }finally{friendsBusy=false;}
+ }
+ window.refreshDeluxeFriendsBar=loadFriends;
+ const prevAccount=window.updateAccountUI;window.updateAccountUI=function(){prevAccount?.();loadFriends();};
+ const prevShow=window.showPage;window.showPage=function(name){prevShow?.(name);if(name==="games")loadFriends();};
+ window.addEventListener("load",()=>{loadFriends();loadRatings();});
+ setInterval(()=>{if($("gamesPage")?.classList.contains("active"))loadFriends();},20000);
+})();
+</script></body>
 </html>
