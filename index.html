@@ -248,6 +248,95 @@ body.light-mode .pilot-welcome{color:#626d80}
 .seasonal-admin-form label{display:block;color:var(--muted);font-size:13px}.seasonal-admin-form input,.seasonal-admin-form select{display:block;width:100%;margin-top:6px;padding:11px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);min-width:0}
 .seasonal-admin-form .seasonal-full{grid-column:1/-1}
 @media(max-width:620px){.seasonal-admin-form{grid-template-columns:1fr}.seasonal-admin-form .seasonal-full{grid-column:auto}}
+
+/* ===== Deluxe 2026 navigation and discovery refresh ===== */
+:root{--accent:#35d07f;--accent2:#63e69d;--sidebar-width:68px}
+body{background-image:radial-gradient(circle at 78% -8%,rgba(53,208,127,.12),transparent 34%),radial-gradient(circle at 10% 30%,rgba(61,118,255,.055),transparent 28%)}
+.deluxe-topbar{height:66px;padding:0 24px 0 22px;gap:16px;z-index:100;border-bottom:1px solid var(--line);background:rgba(10,13,16,.9)}
+.deluxe-topbar .brand{gap:10px}.deluxe-topbar .brand-mark{background:linear-gradient(135deg,#2bbf72,#167b4a);box-shadow:0 7px 24px #22c55e33}
+.topbar-spacer{flex:1}.topbar-actions{display:flex;align-items:center;gap:12px}
+.top-icon{width:42px;height:42px;display:grid;place-items:center;border:1px solid transparent;border-radius:13px;background:transparent;color:var(--text);font-size:21px;position:relative;transition:.18s}
+.top-icon:hover{background:var(--panel2);border-color:var(--line)}
+.delubux-icon{color:#f5c542}.top-hover-wrap{position:relative}
+.top-hover-card{position:absolute;right:0;top:calc(100% + 10px);white-space:nowrap;padding:10px 13px;border-radius:11px;background:var(--panel);border:1px solid var(--line);box-shadow:0 12px 35px #0007;font-weight:800;opacity:0;visibility:hidden;transform:translateY(-4px);transition:.16s;z-index:300}
+.top-hover-wrap:hover .top-hover-card,.top-hover-wrap:focus-within .top-hover-card{opacity:1;visibility:visible;transform:none}
+.profile-top-icon{overflow:visible;border:2px solid var(--role-color,#52606d);box-shadow:0 0 0 2px color-mix(in srgb,var(--role-color,#52606d) 18%,transparent)}
+.profile-top-icon img{width:100%;height:100%;object-fit:cover;border-radius:10px}.profile-top-icon .profile-hover-card{position:absolute;right:0;top:calc(100% + 12px);width:190px;padding:12px;background:var(--panel);border:1px solid var(--role-color,#52606d);border-radius:12px;box-shadow:0 15px 40px #0008;opacity:0;visibility:hidden;pointer-events:none;z-index:300}
+.profile-top-icon:hover .profile-hover-card{opacity:1;visibility:visible}
+.top-login-button{padding:10px 17px;border-radius:11px;background:#26b96b;border-color:#26b96b;color:#04140b}
+.notification-top-icon .unread-badge{position:absolute;right:-3px;top:-4px;margin:0}
+.deluxe-sidebar{position:fixed;z-index:90;left:0;top:66px;bottom:0;width:var(--sidebar-width);padding:15px 9px 13px;background:rgba(12,15,19,.94);border-right:1px solid var(--line);backdrop-filter:blur(18px);display:flex;flex-direction:column;transition:width .2s ease;overflow:visible}
+.deluxe-sidebar:hover,.deluxe-sidebar:focus-within{width:226px}
+.sidebar-nav{display:flex;flex-direction:column;gap:7px}.sidebar-link{width:100%;height:48px;display:flex;align-items:center;gap:15px;padding:0 13px;border:1px solid transparent;border-radius:12px;background:transparent;text-decoration:none;color:var(--muted);white-space:nowrap;text-align:left;overflow:hidden;position:relative;transition:.16s}
+.sidebar-icon{width:22px;min-width:22px;text-align:center;font-size:20px}.sidebar-label{opacity:0;transform:translateX(-5px);transition:.15s;font-weight:650;font-size:14px}.deluxe-sidebar:hover .sidebar-label,.deluxe-sidebar:focus-within .sidebar-label{opacity:1;transform:none}
+.sidebar-link:hover{background:var(--panel2);color:var(--text)}.sidebar-link.active{background:rgba(53,208,127,.13);border-color:rgba(53,208,127,.3);color:#62e69c}.sidebar-link.active .sidebar-icon{filter:drop-shadow(0 0 7px #36d17d)}
+.sidebar-link .unread-badge{margin-left:auto}.sidebar-bottom{margin-top:auto;padding:8px 13px;color:#58d990;font-size:11px;font-weight:900;letter-spacing:.12em}
+main#app{max-width:none;margin:0 0 0 var(--sidebar-width);padding:32px clamp(18px,3vw,44px) 80px;transition:margin-left .2s}
+body:has(.deluxe-sidebar:hover) main#app,body:has(.deluxe-sidebar:focus-within) main#app{margin-left:226px}
+body:has(.deluxe-sidebar:hover) .deluxe-sidebar,body:has(.deluxe-sidebar:focus-within) .deluxe-sidebar{width:226px}
+.page-title h1{letter-spacing:-.035em}
+#gamesPage>.page-title{margin-bottom:20px}#gamesPage>.page-title .eyebrow{color:#5be095}
+#gamesPage>.page-title p:not(.eyebrow){display:none}
+#gameSearch{border-radius:13px;padding:14px 16px;background:var(--panel)}
+.game-discovery-section{margin-top:34px}.game-discovery-section .section-heading{margin:0 0 14px}
+.game-discovery-section .section-heading h2{font-size:23px;letter-spacing:-.025em}
+.game-discovery-grid{grid-auto-columns:minmax(150px,185px);gap:14px}
+.game-discovery-grid .game-card{border:1px solid var(--line);border-radius:15px;background:#11161a;aspect-ratio:1/1;overflow:hidden;position:relative;transition:transform .18s,border-color .18s,box-shadow .18s}
+.game-discovery-grid .game-card:hover{transform:translateY(-3px);border-color:#3bc77c;box-shadow:0 12px 32px #0006}
+.game-discovery-grid .game-thumb{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto;border-radius:0}
+.game-discovery-grid .game-thumb img{object-fit:cover}
+.game-discovery-grid .game-card-body{position:absolute!important;inset:0!important;display:flex!important;justify-content:flex-end!important;gap:7px!important;padding:13px!important;opacity:0!important;background:linear-gradient(180deg,transparent 30%,rgba(0,0,0,.94))!important;transition:opacity .18s!important}
+.game-discovery-grid .game-card:hover .game-card-body,.game-discovery-grid .game-card:focus-within .game-card-body{opacity:1!important}
+.game-discovery-grid .game-title{font-size:15px!important;font-weight:850;color:white!important}
+.game-discovery-grid .game-card-actions{display:none!important}
+.game-card-rating{font-size:12px;font-weight:800;color:#facc15}
+.game-hover-promo{position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1;background:#000}
+.game-hover-promo iframe{width:100%;height:100%;border:0;pointer-events:none}
+.game-card:hover .game-hover-promo{opacity:1}.game-card:hover .game-thumb{opacity:.18}
+.game-card .game-card-body{z-index:3}
+#allGames .game-discovery-grid{grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));grid-auto-columns:auto}
+#allTrending .game-discovery-grid{grid-auto-flow:row;grid-template-columns:repeat(auto-fill,minmax(145px,1fr));grid-auto-columns:auto}
+.game-detail-revamp-head{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(270px,.85fr);gap:26px;align-items:start}
+.game-detail-title-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.game-detail-title-row h1{font-size:clamp(30px,4vw,46px);margin:0;letter-spacing:-.04em}
+.game-detail-title-actions{display:flex;align-items:center;gap:8px}.game-detail-title-actions a,.game-detail-title-actions button{width:36px;height:36px;display:grid;place-items:center;padding:6px;border:1px solid var(--line);border-radius:10px;background:var(--panel);text-decoration:none}
+.game-detail-title-actions img{width:21px;height:21px;object-fit:contain}
+.game-detail-back{display:inline-flex;margin:12px 0 18px;align-items:center;gap:8px}
+.game-detail-description-card{padding:19px;border:1px solid var(--line);border-radius:16px;background:var(--panel)}
+.game-detail-description-card h3{margin:0 0 9px}.game-detail-description-card p{margin:0;color:var(--muted);line-height:1.65;white-space:pre-wrap}
+.game-detail-rating{margin-top:14px;padding-top:13px;border-top:1px solid var(--line);font-weight:800;color:#facc15}
+.game-detail-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:13px}
+.game-detail-tags .game-tag{margin:0}
+.game-detail-promo{margin:25px 0}.game-detail-promo .game-promo-grid{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.game-detail-promo .game-promo-card{padding:8px}
+.game-detail-play{width:100%;height:68px;display:grid;place-items:center;margin:22px 0 35px;background:linear-gradient(100deg,#21ad63,#37d987);border:0;border-radius:16px;color:#03190c;font-size:31px;font-weight:900;box-shadow:0 10px 30px #22c55e2a}
+.game-detail-play:hover{filter:brightness(1.08);transform:translateY(-1px)}
+.game-community-links{margin:0}
+.game-player-top{display:none!important}
+.game-player-shell{min-height:70vh;border-radius:16px}
+.game-player-frame{height:70vh}
+.game-player-controls{display:flex;justify-content:center;gap:12px;padding:13px 0 24px}
+.game-player-control{width:46px;height:44px;display:grid;place-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;font-size:20px}
+.game-player-control:hover{border-color:#38d27e;color:#68e99e}
+.game-chat-overlay{position:absolute;right:12px;top:12px;bottom:12px;width:min(350px,calc(100% - 24px));z-index:7;background:rgba(15,19,23,.96);border:1px solid #46534c;border-radius:14px;padding:13px;display:flex;flex-direction:column;backdrop-filter:blur(14px)}
+.game-chat-overlay.hidden{display:none!important}.game-chat-overlay .game-chat-box{flex:1;min-height:0;max-height:none;overflow:auto}
+.game-chat-overlay .game-chat-head{margin-bottom:8px}.game-chat-overlay .game-chat-input{margin-top:8px}
+.game-player-shell .game-chat-panel{display:none}
+#inboxPage .inbox-message{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:start}
+.inbox-delete{border:1px solid #71343d;background:#351a20;color:#ffb4bc;border-radius:9px;padding:7px 10px}
+#marketplacePage .page-title h1{font-size:clamp(30px,4vw,42px)}
+#marketplacePage .exclusive-theme-card,#marketplacePage .seasonal-bundle-card{border-radius:17px;box-shadow:0 12px 32px #0002}
+#marketplacePage .section-heading h2{font-size:24px}
+#marketplacePage .primary{background:#27bd70;border-color:#27bd70;color:#04150b}
+#sitePilotLauncher{border-radius:15px;width:52px;height:52px;padding:0;display:grid;place-items:center;font-size:0;box-shadow:0 0 0 1px #b6aaff55,0 10px 35px #0008;transition:transform .2s,box-shadow .2s}
+#sitePilotLauncher:before{content:"✦";font-size:25px}
+#sitePilotLauncher:after{content:"Site Pilot";position:absolute;right:60px;white-space:nowrap;padding:8px 11px;background:var(--panel);border:1px solid var(--line);border-radius:9px;font-size:12px;opacity:0;transform:translateX(5px);transition:.15s;pointer-events:none}
+#sitePilotLauncher:hover{transform:translateY(-3px);box-shadow:0 0 18px #a78bfa,0 0 35px #7c3aed99}
+#sitePilotLauncher:hover:after{opacity:1;transform:none}
+@media(max-width:760px){:root{--sidebar-width:56px}.deluxe-sidebar{padding:12px 6px}.sidebar-link{padding:0 10px}.sidebar-icon{font-size:18px}.deluxe-sidebar:hover,.deluxe-sidebar:focus-within{width:205px}body:has(.deluxe-sidebar:hover) main#app,body:has(.deluxe-sidebar:focus-within) main#app{margin-left:205px}main#app{padding:22px 13px 70px}.deluxe-topbar{padding:0 10px}.deluxe-topbar .brand span:last-child{display:none}.topbar-actions{gap:3px}.top-icon{width:37px;height:38px}.game-detail-revamp-head{grid-template-columns:1fr}.game-player-shell{min-height:55vh}.game-player-frame{height:55vh}}
+body.light-mode .deluxe-topbar,body.light-mode .deluxe-sidebar{background:rgba(255,255,255,.94)}
+body.light-mode .game-discovery-grid .game-card{background:#fff}
+body.light-mode .game-detail-description-card{background:#fff}
 </style>
 <style id="deluxeSocialStyles">
 .social-layout{display:grid;grid-template-columns:minmax(220px,.7fr) minmax(0,1.5fr);gap:18px;align-items:start}.social-panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:17px;min-width:0}.social-panel h2,.social-panel h3{margin:0 0 12px}.social-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.social-row:last-child{border-bottom:0}.social-row .grow{flex:1;min-width:0}.social-row small,.social-muted{color:var(--muted);font-size:12px}.social-input,.social-select,.social-textarea{width:100%;padding:11px 12px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);margin:5px 0 10px}.social-textarea{min-height:75px;resize:vertical}.social-feed{display:grid;gap:9px;max-height:440px;overflow:auto;margin:12px 0}.social-post{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px}.social-post p{white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;line-height:1.5}.social-channel-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.social-channel-tabs button.active{background:var(--accent);border-color:var(--accent)}.presence-pill{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:12px}.presence-pill:before{content:"";width:7px;height:7px;border-radius:50%;background:#747b88}.presence-pill.online:before{background:#4ade80}.deluxe-toast{position:fixed;top:18px;right:18px;bottom:auto;z-index:2147483647;max-width:min(390px,calc(100vw - 36px));background:#171b24;border:1px solid var(--accent);box-shadow:0 18px 55px #0008;border-radius:14px;padding:15px 17px;pointer-events:auto}.deluxe-toast strong{display:block;margin-bottom:5px}.deluxe-toast p{margin:0;color:var(--muted);line-height:1.45;font-size:14px}.game-player-shell:fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#000!important;z-index:1}.game-player-shell:fullscreen .game-player-frame{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important}.game-player-shell:fullscreen .deluxe-toast{position:fixed;top:18px;right:18px;bottom:auto;z-index:2147483647}@media(max-width:760px){.social-layout{grid-template-columns:1fr}}
@@ -256,33 +345,33 @@ body.light-mode .pilot-welcome{color:#626d80}
 </style>
 <style id="seasonal-exclusive-game-styles">.seasonal-exclusive-games{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0}.seasonal-exclusive-game{min-width:0;display:flex;flex-direction:column;gap:7px;padding:9px;border-radius:12px;background:rgba(0,0,0,.18);text-align:center}.seasonal-exclusive-thumb{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:8px}.seasonal-exclusive-meta{display:flex;align-items:center;justify-content:center;gap:6px;min-width:0}.seasonal-exclusive-meta strong{font-size:12px;overflow-wrap:anywhere}.seasonal-exclusive-icon{width:22px;height:22px;object-fit:cover;border-radius:6px}.seasonal-locked{font-size:11px;opacity:.75}.seasonal-exclusive-game a{font-size:12px;text-decoration:none;padding:7px;border-radius:8px}@media(max-width:600px){.seasonal-exclusive-games{grid-template-columns:1fr}}</style></head>
 <body>
-  <header class="topbar">
-    <a class="brand" href="#" data-page="home">
-      <span class="brand-mark">S</span>
-      <span>Secret Unblocked <b>Deluxe</b></span>
-    </a>
-
-    <nav class="nav">
-      <a href="#" data-page="home">Home</a>
-      <a href="#" data-page="marketplace">🛍️ Marketplace</a>
-      <a href="#" data-page="games">Games</a>
-      
-      <a href="#" data-page="users">Users</a><a href="#" data-page="community">Community</a>
-      <a href="#" data-page="settings">Settings</a>
-      <a href="#" data-page="inbox" id="inboxNavLink">📩 Inbox <span id="unreadBadge" class="unread-badge hidden">0</span></a>
-      <a href="#" data-page="admin" id="adminNavLink" class="hidden">🛡️ Admin Panel</a>
-      <a href="https://zacharyceiley-jpg.github.io/secret-Unblocked-Listen/" target="_blank" rel="noopener" onclick="recordListenDailyTask()">Listen</a>
-    </nav>
-
-    <div class="account-area">
-      <button id="delubuxBalance" class="account-button" type="button" onclick="showPage('marketplace')">🪙 0 Delubux</button>
-      <button id="accountButton" class="account-button">Sign In</button>
-      <button id="menuButton" class="icon-button" aria-label="Open menu">☰</button>
+  <header class="topbar deluxe-topbar">
+    <a class="brand" href="#" data-page="games" aria-label="Secret Unblocked Deluxe games"><span class="brand-mark">S</span><span>Secret Unblocked <b>Deluxe</b></span></a>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <div class="top-hover-wrap"><button id="delubuxBalance" class="top-icon delubux-icon" type="button" onclick="showPage('marketplace')" aria-label="Delubux balance" data-tooltip="0 Delubux">🪙</button><span class="top-hover-card" id="delubuxHoverBalance">0 Delubux</span></div>
+      <button id="accountButton" class="top-icon profile-top-icon" type="button" aria-label="Profile" title="Sign in">👤</button>
+      <button class="top-icon" type="button" data-page="settings" aria-label="Settings" title="Settings">⚙</button>
+      <button class="top-icon notification-top-icon" type="button" data-page="inbox" aria-label="Notifications" title="Notifications">♢<span id="unreadBadge" class="unread-badge hidden">0</span></button>
+      <button id="topLoginButton" class="primary top-login-button" type="button" onclick="openAuth('login')">Sign In</button>
     </div>
   </header>
+  <aside class="deluxe-sidebar" id="deluxeSidebar" aria-label="Main navigation">
+    <div class="sidebar-nav">
+      <a href="#" class="sidebar-link" data-page="games" data-label="Games" title="Games"><span class="sidebar-icon">🎮</span><span class="sidebar-label">Games</span></a>
+      <a href="#" class="sidebar-link" data-page="inbox" id="inboxNavLink" data-label="Inbox" title="Inbox"><span class="sidebar-icon">✉</span><span class="sidebar-label">Inbox</span><span id="sidebarUnreadBadge" class="unread-badge hidden">0</span></a>
+      <a href="https://zacharyceiley-jpg.github.io/secret-Unblocked-Listen/" target="_blank" rel="noopener" onclick="recordListenDailyTask()" class="sidebar-link" data-label="Listen" title="Listen"><span class="sidebar-icon">♫</span><span class="sidebar-label">Listen</span></a>
+      <button type="button" class="sidebar-link" id="sidebarGameCreator" onclick="if(!currentUser){openAuth('login')}else{resetGameEditor();openModal('gameUploader')}" title="Game Creator"><span class="sidebar-icon">✚</span><span class="sidebar-label">Game Creator</span></button>
+      <a href="#" class="sidebar-link" data-page="community" data-label="Community" title="Community"><span class="sidebar-icon">◎</span><span class="sidebar-label">Community</span></a>
+      <a href="#" class="sidebar-link" data-page="marketplace" data-label="Marketplace" title="Marketplace"><span class="sidebar-icon">🛍</span><span class="sidebar-label">Marketplace</span></a>
+      <a href="#" class="sidebar-link" data-page="users" data-label="Users" title="Users"><span class="sidebar-icon">♙</span><span class="sidebar-label">Users</span></a>
+      <a href="#" class="sidebar-link hidden" data-page="admin" id="adminNavLink" data-label="Admin Panel" title="Admin Panel"><span class="sidebar-icon">🛡</span><span class="sidebar-label">Admin Panel</span></a>
+    </div>
+    <div class="sidebar-bottom"><span class="sidebar-brand-mini">SUD</span></div>
+  </aside>
 
   <main id="app">
-    <section id="homePage" class="page active">
+    <section id="homePage" class="page">
       <div class="hero">
         <div>
           <p class="eyebrow">THE NEW PLATFORM</p>
@@ -403,7 +492,7 @@ body.light-mode .pilot-welcome{color:#626d80}
       <p class="settings-note">Unlocks and theme selection are stored on your signed-in Deluxe profile, not in this browser's local storage. Sign in before unlocking or applying a theme to keep it synced.</p>
     </section>
 
-    <section id="gamesPage" class="page">
+    <section id="gamesPage" class="page active">
       <div class="page-title">
         <p class="eyebrow">DELUXE</p>
         <h1>Games</h1>
@@ -3171,5 +3260,121 @@ if(originalGameChannelSubmit)originalGameChannelSubmit.addEventListener("submit"
 const oldLoadCommunity=window.loadCommunity;
 window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity();await loadGameServers()};
 })();
-</script></body>
+</script>
+<script id="deluxe2026Revamp">
+(() => {
+  const $id = id => document.getElementById(id);
+  const roleColors = {admin:"#ff4d5f",publisher:"#4ade80",bugtester:"#60a5fa",user:"#687482"};
+  function refreshSidebar(){
+    const active=document.querySelector(".page.active")?.id?.replace(/Page$/,"");
+    document.querySelectorAll(".sidebar-link[data-page]").forEach(link=>link.classList.toggle("active",link.dataset.page===active));
+    const old=$id("unreadBadge"),copy=$id("sidebarUnreadBadge");
+    if(old&&copy){copy.textContent=old.textContent;copy.classList.toggle("hidden",old.classList.contains("hidden"));}
+  }
+  const originalShowPage=window.showPage;
+  window.showPage=function(name){originalShowPage(name);refreshSidebar();};
+  document.querySelectorAll(".sidebar-link[data-page]").forEach(link=>link.addEventListener("click",e=>{e.preventDefault();window.showPage(link.dataset.page);}));
+  const creator=$id("sidebarGameCreator");
+  creator?.addEventListener("click",()=>{setTimeout(()=>{$id("gameEditorTitle")?.scrollIntoView({block:"nearest"});},30)});
+  const originalUpdateAccountUI=window.updateAccountUI;
+  window.updateAccountUI=function(){
+    if(originalUpdateAccountUI)originalUpdateAccountUI();
+    const btn=$id("accountButton"),login=$id("topLoginButton");
+    if(!btn)return;
+    if(!window.currentUser){btn.innerHTML="👤";btn.title="Sign in";btn.setAttribute("aria-label","Sign in");if(login)login.classList.remove("hidden");btn.onclick=()=>window.openAuth?.("login");btn.style.setProperty("--role-color",roleColors.user);return;}
+    if(login)login.classList.add("hidden");
+    const profile=window.currentProfile||{};
+    const joined=profile.created_at?new Date(profile.created_at).toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}):"Join date unavailable";
+    const role=window.currentRole||"user",color=roleColors[role]||roleColors.user;
+    btn.style.setProperty("--role-color",color);
+    btn.innerHTML=(profile.avatar_url?'<img src="'+String(profile.avatar_url).replace(/"/g,"&quot;")+'" alt="">':"👤")+'<span class="profile-hover-card"><strong style="display:block;color:'+color+'">'+(profile.username||"Deluxe member")+'</strong><small style="color:var(--muted)">Joined '+joined+'</small></span>';
+    btn.title=(profile.username||"Profile")+" · Joined "+joined;
+    btn.onclick=()=>{if(typeof window.openOwnProfile==="function")window.openOwnProfile();else if(typeof window.openProfile==="function")window.openProfile(window.currentUser.id);};
+  };
+  const originalBalance=window.updateDelubuxBalance;
+  window.updateDelubuxBalance=function(){
+    if(originalBalance)originalBalance();
+    const el=$id("delubuxBalance"),hover=$id("delubuxHoverBalance");
+    const amount=Number(window.delubuxBalance||0).toLocaleString()+" Delubux";
+    if(el){el.textContent="🪙";el.dataset.tooltip=amount;el.title=amount;}
+    if(hover)hover.textContent=amount;
+  };
+  const oldToast=$id("deluxeToast");
+  if(oldToast){
+    const reply=$id("deluxeToastReply")||document.createElement("button");
+    reply.id="deluxeToastReply";reply.className="secondary";reply.type="button";reply.textContent="Reply";
+    reply.style.cssText="display:none;margin-top:10px;padding:7px 10px";
+    oldToast.appendChild(reply);
+    reply.addEventListener("click",()=>{window.showPage("inbox");});
+    document.addEventListener("keydown",e=>{if(e.key==="/"&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&!/INPUT|TEXTAREA/.test(document.activeElement?.tagName||"")){if(!oldToast.classList.contains("hidden")){e.preventDefault();window.showPage("inbox");}}});
+  }
+  window.renderLibraryCard=function(g){
+    const title=escapeHtml(g.title||"Untitled Game"),image=g.icon_url||g.icon||"";
+    const thumb=image&&validGameUrl(image)?'<img src="'+escapeHtml(image)+'" alt="'+title+' icon" loading="lazy">':"🎮";
+    const promo=Array.isArray(g.promo_videos)?g.promo_videos[0]:"";
+    const promoId=/^[A-Za-z0-9_-]{11}$/.test(promo||"")?promo:"";
+    const rating=Number(g.average_rating||g.rating||0);
+    return '<article class="game-card" tabindex="0" role="button" aria-label="View '+title+'" onclick="openGameDetails(\''+g.id+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGameDetails(\''+g.id+'\')}"><div class="game-thumb">'+thumb+'</div>'+(promoId?'<div class="game-hover-promo"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/'+promoId+'?autoplay=1&mute=1&controls=0&loop=1&playlist='+promoId+'&playsinline=1" title="Muted game preview" allow="autoplay; encrypted-media"></iframe></div>':'')+'<div class="game-card-body"><div class="game-title">'+title+'</div><div class="game-card-rating">'+(rating>0?'★ '+rating.toFixed(1):'☆ Not rated')+'</div></div></article>';
+  };
+  window.renderGames=function(filter=""){
+    const q=String(filter||"").trim().toLocaleLowerCase();
+    const games=allPublishedGames.filter(g=>{if(!q)return true;const genres=getGameGenres(g);return [g.title,g.description,g.profiles?.username,...genres].some(v=>String(v||"").toLocaleLowerCase().includes(q));});
+    const row=(title,eyebrow,list,id,all=false)=>list.length?'<section class="game-discovery-section" id="'+id+'"><div class="section-heading"><div><p class="eyebrow">'+eyebrow+'</p><h2>'+title+'</h2></div></div><div class="game-discovery-grid">'+list.map(g=>renderLibraryCard(g)).join("")+'</div></section>':"";
+    const recent=getDeluxeRecentGames().map(id=>games.find(g=>g.id===id)).filter(Boolean).slice(0,8);
+    const recentIds=new Set(recent.map(g=>g.id));
+    const picks=games.filter(g=>!recentIds.has(g.id)&&matchesPreferredGenres(g)).slice(0,12);
+    const classics=games.filter(g=>getGameGenres(g).some(t=>/secret\s*unblocked\s*classic|classic/i.test(t))).slice(0,12);
+    const newest=[...games].sort((a,b)=>(Date.parse(b.created_at||b.published_at||"")||0)-(Date.parse(a.created_at||a.published_at||"")||0));
+    const trending=[...games].sort((a,b)=>Number(b.total_playtime||0)-Number(a.total_playtime||0));
+    const fallback=games.filter(g=>!recentIds.has(g.id)&&!picks.some(p=>p.id===g.id)).slice(0,12);
+    const owned=ownedSeasonalGames||[];
+    const purchased=owned.length?'<section class="game-discovery-section"><div class="section-heading"><h2>Purchased Games</h2></div><div class="game-discovery-grid">'+owned.map(game=>{const key=String(game.key||"").replace(/[^a-zA-Z0-9_-]/g,"");return '<article class="game-card" onclick="openSeasonalGame(\''+key+'\')"><div class="game-thumb">'+(game.icon?'<img src="'+escapeHtml(game.icon)+'" alt="">':"🎮")+'</div><div class="game-card-body"><div class="game-title">'+escapeHtml(game.title||"Game")+'</div></div></article>';}).join("")+'</div></section>':"";
+    const html=row("Continue","PICK UP WHERE YOU LEFT OFF",recent,"continueGames")+row("Picks for you","RECOMMENDED",picks.length?picks:fallback.slice(0,8),"picksForYouGames")+row("Deluxe Classics","SECRET UNBLOCKED CLASSICS",classics,"deluxeClassics")+row("New picks","JUST ADDED",newest.slice(0,8),"newPicks")+row("Top 8 newest games","LATEST RELEASES",newest.slice(0,8),"topNewest")+row("Trending","MOST PLAYED",trending.slice(0,8),"trendingGames")+row("All trending","TRENDING LIBRARY",trending,"allTrending")+purchased+row("All games","FULL LIBRARY",games,"allGames");
+    $id("gameGrid").innerHTML=html||'<div class="empty-state"><span>🎮</span><h2>No games found</h2><p>Try another search.</p></div>';
+  };
+  window.openGameDetails=function(id){
+    const g=allPublishedGames.find(x=>x.id===id);if(!g)return;
+    const title=escapeHtml(g.title||"Untitled Game"),description=escapeHtml(g.description||"No description has been added yet.");
+    const tags=getGameGenres(g).map(t=>'<span class="game-tag">'+escapeHtml(t)+'</span>').join("");
+    const rating=Number(g.average_rating||g.rating||0);
+    const isOwner=!!currentUser&&g.creator_id===currentUser.id;
+    const discord=validGameUrl(g.discord_url||"")?'<a href="'+escapeHtml(g.discord_url)+'" target="_blank" rel="noopener" title="Discord"><img src="https://uxwing.com/wp-content/themes/uxwing/download/brands-and-social-media/discord-color-icon.png" alt="Discord"></a>':"";
+    const fandom=validGameUrl(g.fandom_url||"")?'<a href="'+escapeHtml(g.fandom_url)+'" target="_blank" rel="noopener" title="Fandom"><img src="https://assets.streamlinehq.com/image/private/w_300,h_300,ar_1/f_auto/v1/icons/logos/fandom-urtw5vup5aklqnwhbxh08.png/fandom-wg2s5caqd65tbyuyrpcfc.png?_a=DATAiZAAZAA0" alt="Fandom"></a>':"";
+    const edit=isOwner?'<button type="button" onclick="editMyGame(\''+g.id+'\')" title="Edit game">✎</button>':"";
+    const videos=(Array.isArray(g.promo_videos)?g.promo_videos:[]).filter(v=>/^[A-Za-z0-9_-]{11}$/.test(v)).slice(0,5);
+    const promo=videos.length?'<section class="game-detail-promo"><div class="section-heading"><h2>Promo videos</h2></div><div class="game-promo-grid">'+videos.map((v,i)=>'<div class="game-promo-card"><div class="game-promo-frame"><iframe src="https://www.youtube-nocookie.com/embed/'+v+'" title="'+title+' promo '+(i+1)+'" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen></iframe></div></div>').join("")+'</div></section>':"";
+    $id("gameDetailRoot").innerHTML='<div class="game-detail-revamp-head"><div><div class="game-detail-title-row"><h1>'+title+'</h1><div class="game-detail-title-actions">'+discord+fandom+edit+'</div></div><button class="secondary game-detail-back" onclick="showPage(\'games\')">← Back</button><div class="game-detail-tags">'+(tags||'<span class="game-tag">No tags</span>')+'</div></div><div class="game-detail-description-card"><h3>About this game</h3><p>'+description+'</p><div class="game-detail-rating">'+(rating>0?'★ '+rating.toFixed(1)+' / 5':'☆ Not rated yet')+'</div><div class="small-note">Created by '+escapeHtml(g.profiles?.username||"Unknown creator")+'</div></div></div>'+promo+'<button class="game-detail-play" aria-label="Play game" title="Play game" onclick="playGameFromDetails(\''+g.id+'\')">▶</button>';
+    showPage("gameDetail");loadSeasonalPurchasesForGame(id);
+  };
+  window.renderGamePage=function(){
+    const g=currentGame;if(!g)return;
+    $id("gamePlayerRoot").innerHTML='<div class="game-player-shell"><iframe id="activeGameFrame" class="game-player-frame" src="about:blank" title="'+escapeHtml(g.title)+'" allow="fullscreen; gamepad; autoplay" allowfullscreen sandbox="allow-scripts allow-forms allow-popups allow-pointer-lock allow-downloads" loading="eager"></iframe>'+(g.chat_enabled?'<aside id="gameChatOverlay" class="game-chat-overlay hidden"><div class="game-chat-head"><h3>💬 Chat</h3><button class="game-player-control" type="button" onclick="document.getElementById(\'gameChatOverlay\').classList.add(\'hidden\')" aria-label="Close chat">×</button></div><div id="gameChatBox" class="game-chat-box"><div class="loading">Loading chat…</div></div><div class="game-chat-input"><input id="gameChatInput" maxlength="1000" placeholder="Message this game…"><button class="primary" id="gameChatSend">➤</button></div></aside>':'')+'</div><div class="game-player-controls"><button class="game-player-control" type="button" onclick="toggleGameFullscreen()" aria-label="Fullscreen" title="Fullscreen">⛶</button><button class="game-player-control" type="button" onclick="leaveGame()" aria-label="Leave game" title="Leave game">↩</button>'+(g.chat_enabled?'<button class="game-player-control" type="button" onclick="document.getElementById(\'gameChatOverlay\').classList.toggle(\'hidden\')" aria-label="Game chat" title="Game chat">▤</button>':'')+'</div>';
+    loadPlayableGameFrame(g.game_url);
+    if(g.chat_enabled){$id("gameChatSend").onclick=sendGameMessage;$id("gameChatInput").addEventListener("keydown",e=>{if(e.key==="Enter")sendGameMessage()});gameChatRefreshTimer=setInterval(()=>loadGameChat(true),15000);}
+  };
+  const oldInboxLoad=window.loadInbox;
+  window.loadInbox=async function(){
+    await oldInboxLoad();
+    const list=$id("inboxList");if(!list||!currentUser)return;
+    const cards=list.querySelectorAll(".inbox-message");
+    cards.forEach(card=>{
+      if(card.querySelector(".inbox-delete"))return;
+      const onclick=card.getAttribute("onclick")||"";
+      const match=onclick.match(/open(InboxMessage|DeluxeNotification)\('([^']+)'\)/);if(!match)return;
+      const isNotice=match[1]==="DeluxeNotification",id=match[2];
+      const b=document.createElement("button");b.className="inbox-delete";b.type="button";b.textContent="Delete";b.addEventListener("click",async e=>{
+        e.stopPropagation();if(!confirm("Delete this message?"))return;
+        const {error}=await sb.from(isNotice?"deluxe_notifications":"messages").delete().eq("id",id).eq(isNotice?"user_id":"recipient_id",currentUser.id);
+        if(error){alert("Could not delete message: "+error.message);return;}await window.loadInbox();
+      });
+      card.appendChild(b);
+    });
+  };
+  document.addEventListener("click",e=>{const pageLink=e.target.closest("[data-page]");if(pageLink)setTimeout(refreshSidebar,0);});
+  const search=$id("gameSearch");search?.addEventListener("input",()=>window.renderGames(search.value));
+  window.addEventListener("load",()=>{window.updateAccountUI?.();window.updateDelubuxBalance?.();refreshSidebar();window.showPage("games");});
+  refreshSidebar();
+})();
+</script>
+</body>
 </html>
