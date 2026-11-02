@@ -1225,7 +1225,11 @@ function loadFromDeluxe(onLoaded) {
     }[c]));
   }
 
+  // Each auth refresh gets a sequence number so a slower, older request can
+  // never overwrite a newer sign-in/sign-out event.
+  let authRefreshSequence = 0;
   async function refreshSession(sessionOverride, hasSessionOverride=false){
+    const refreshId = ++authRefreshSequence;
     if (!sb) {
       $("accountButton").textContent = "Configure Supabase";
       return;
@@ -1236,14 +1240,20 @@ function loadFromDeluxe(onLoaded) {
       if (error) console.error("Could not restore Deluxe session:", error);
       session = data?.session || null;
     }
+    if (refreshId !== authRefreshSequence) return;
     currentUser = session?.user || null;
     await loadCurrentProfile();
+    if (refreshId !== authRefreshSequence) return;
     if (currentUser && currentRole !== "admin") {
-      const {data: ban} = await sb.from("user_bans").select("banned_until,reason").eq("user_id",currentUser.id).maybeSingle();
+      const checkedUserId = currentUser.id;
+      const {data: ban, error: banError} = await sb.from("user_bans").select("banned_until,reason").eq("user_id",checkedUserId).maybeSingle();
+      if (refreshId !== authRefreshSequence) return;
+      if (banError) console.warn("Could not check account suspension during session restore:",banError.message);
       const active = ban && (!ban.banned_until || new Date(ban.banned_until).getTime() > Date.now());
       if (active) {
         const until = ban.banned_until ? new Date(ban.banned_until).toLocaleString() : "permanently";
-        await sb.auth.signOut();
+        await sb.auth.signOut({scope:"local"});
+        if (refreshId !== authRefreshSequence) return;
         currentUser = null; currentProfile = null; currentRole = "user";
         updateAccountUI();
         alert("Your Secret Unblocked Deluxe account is suspended " + until + "." + (ban.reason ? "\nReason: " + ban.reason : ""));
@@ -1251,7 +1261,13 @@ function loadFromDeluxe(onLoaded) {
       }
     }
     updateAccountUI();
-    if (currentUser) loadUserInbox();
+    if (currentUser) {
+      loadUserInbox();
+      updateUnreadBadge().catch(err=>console.warn("Unread count refresh failed:",err));
+    } else {
+      unreadMessageCount = 0;
+      updateUnreadBadgeUI();
+    }
   }
 
 
@@ -1717,11 +1733,15 @@ function loadFromDeluxe(onLoaded) {
         return setAuthMessage(error.message, true);
       }
 
-      // Use the session returned by signInWithPassword immediately.
-      // The auth-state listener refreshes the UI separately without blocking login.
-      currentUser = data?.user || data?.session?.user || null;
-      await loadCurrentProfile();
-      updateAccountUI();
+      // Confirm Supabase has an active session before showing a signed-in state.
+      // Supabase persists this session using the configured localStorage adapter.
+      const {data:stored,error:storedError} = await sb.auth.getSession();
+      if (storedError) throw storedError;
+      const activeSession = stored?.session;
+      if (!activeSession || activeSession.user?.id !== data?.user?.id) {
+        throw new Error("Your login worked, but Deluxe could not save the session in this browser. Check that site storage is enabled, then try again.");
+      }
+      await refreshSession(activeSession,true);
       await enforceCurrentUserBan();
       await updateUnreadBadge();
 
@@ -3150,13 +3170,14 @@ flushDeluxePlayTracking();
 
   if (sb) {
     sb.auth.onAuthStateChange((event, session) => {
-      // Supabase supplies the restored session in INITIAL_SESSION. Use that
-      // exact session instead of racing it with a second getSession() call.
-      // Defer async profile/database work to avoid holding the auth lock.
+      // Defer profile/database work until Supabase releases its auth lock.
       setTimeout(() => {
-        refreshSession(session || null, true).catch(err => console.error("Session restore error:", err));
+        refreshSession(session || null, true).catch(err => console.error("Session state update failed:", err));
       }, 0);
     });
+    // Do an explicit startup read too. This covers browsers where the initial
+    // auth event is delayed or missed while the page is being initialized.
+    refreshSession().catch(err => console.error("Startup session restore failed:",err));
   }
   // Save active play sessions periodically, not only when the player exits.
   setInterval(() => {
