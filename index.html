@@ -3592,6 +3592,7 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
   };
   window.renderGames=function(filter=""){
     const q=String(filter||"").trim().toLocaleLowerCase();
+    renderGameCollections(q);
     const games=allPublishedGames.filter(g=>{if(!q)return true;const genres=getGameGenres(g);return [g.title,g.description,g.profiles?.username,...genres].some(v=>String(v||"").toLocaleLowerCase().includes(q));});
     const row=(title,eyebrow,list,id,all=false)=>list.length?'<section class="game-discovery-section" id="'+id+'"><div class="section-heading"><div><p class="eyebrow">'+eyebrow+'</p><h2>'+title+'</h2></div></div><div class="game-discovery-grid">'+list.map(g=>renderLibraryCard(g)).join("")+'</div></section>':"";
     const recent=getDeluxeRecentGames().map(id=>games.find(g=>g.id===id)).filter(Boolean).slice(0,8);
