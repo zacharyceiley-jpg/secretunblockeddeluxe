@@ -182,6 +182,9 @@ main{max-width:1200px;margin:auto;padding:50px 28px 90px}
   .exclusive-theme-preview.tds-preview{background-image:linear-gradient(0deg,rgba(0,0,0,.45),transparent),url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSJas3xIMFSbkECnSpMre_PrmU45tkNjuGz1e2P7zmoew&s=10")}
   .exclusive-theme-preview.sfoth-preview{background-image:linear-gradient(0deg,rgba(0,0,0,.45),transparent),url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQD6SqgTJvbdOv6nuk-zpOfVbEs15Y0RUeuAtJ9zDzs8F5wLC1d4shN7m8&s=10")}
   .exclusive-theme-body{padding:18px}
+  .top-profile-avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;display:block}
+  .avatar-preview-image{width:100%;height:100%;object-fit:cover;border-radius:50%}
+  .cloud-save-status{font-size:12px;color:var(--muted);margin-top:8px}
   .exclusive-theme-body h3{margin:0 0 8px}
   .exclusive-theme-body p{color:var(--muted);line-height:1.55}
   .theme-status{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:12px;margin-bottom:10px}
@@ -503,6 +506,16 @@ body.light-mode .game-detail-description-card{background:#fff}
       </div>
       <div class="section-heading" style="margin-top:36px"><div><p class="eyebrow">ACCOUNT SYNC</p><h2>Saved to your account</h2></div></div>
       <p class="settings-note">Unlocks and theme selection are stored on your signed-in Deluxe profile, not in this browser's local storage. Sign in before unlocking or applying a theme to keep it synced.</p>
+      <div class="section-heading" style="margin-top:36px"><div><p class="eyebrow">PROFILE</p><h2>Avatar customiser</h2></div></div>
+      <article class="exclusive-theme-card" style="margin-bottom:28px"><div class="exclusive-theme-body">
+        <p class="settings-note">Paste a direct image address to use it as your Deluxe profile picture. Your avatar will sync across devices and appear around the site.</p>
+        <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin:14px 0">
+          <div id="avatarCustomizerPreview" class="avatar" style="width:88px;height:88px;font-size:28px">👤</div>
+          <div style="flex:1;min-width:220px"><label class="small-note" for="avatarImageUrl">Avatar image address</label><input id="avatarImageUrl" type="url" maxlength="2048" placeholder="https://example.com/my-avatar.png" style="display:block;width:100%;box-sizing:border-box;margin-top:7px"></div>
+        </div>
+        <div class="theme-actions"><button id="saveAvatarButton" class="primary" type="button">Save Avatar</button><button id="clearAvatarButton" class="secondary" type="button">Remove Avatar</button></div>
+        <div id="avatarCustomizerMessage" class="theme-message" role="status" aria-live="polite"></div>
+      </div></article>
       <div class="section-heading" style="margin-top:36px"><div><p class="eyebrow">ACCOUNT</p><h2>Sign-in status</h2></div></div>
       <article class="exclusive-theme-card"><div class="exclusive-theme-body"><div id="settingsAccountStatus" class="theme-status">Checking account…</div><h3>Stay signed in</h3><p>Your Deluxe session is saved in this browser, so you should stay signed in when you return. Use this button whenever you want to sign out of this device.</p><div class="theme-actions"><button id="settingsSignOut" class="danger-button" type="button">Sign Out</button></div><div id="settingsSignOutMessage" class="theme-message" role="status" aria-live="polite"></div></div></article>
     </section>
@@ -562,6 +575,24 @@ body.light-mode .game-detail-description-card{background:#fff}
           </select>
           <label class="small-note" for="gameUrl">Game URL</label>
           <input id="gameUrl" type="url" required placeholder="https://example.com/game">
+          <details style="border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0 14px;background:var(--panel)">
+            <summary style="cursor:pointer;font-weight:750">Enable Deluxe Cloud Saves for this game</summary>
+            <p class="game-genre-editor-note">Games must include this small bridge in their own code. Deluxe cannot read another site's private localStorage automatically, but this lets a compatible embed send its save data to the signed-in player's account.</p>
+            <pre style="white-space:pre-wrap;overflow-wrap:anywhere;background:#090b10;border:1px solid var(--line);border-radius:9px;padding:10px;font-size:11px;line-height:1.5"><code>function saveToDeluxe(saveData) {
+  window.parent.postMessage({ type: "deluxe:save", data: saveData }, "*");
+}
+function loadFromDeluxe(onLoaded) {
+  function receive(event) {
+    if (event.source !== window.parent || event.data?.type !== "deluxe:load") return;
+    window.removeEventListener("message", receive);
+    onLoaded(event.data.data ?? null);
+  }
+  window.addEventListener("message", receive);
+  window.parent.postMessage({ type: "deluxe:load-request" }, "*");
+}
+// Example: saveToDeluxe({ level: 4, coins: 120 });</code></pre>
+            <p class="game-genre-editor-note">Call <b>saveToDeluxe(yourSaveObject)</b> whenever the player makes progress, and use <b>loadFromDeluxe(data =&gt; ...)</b> when the game starts. Only save JSON data, and ask the player to sign in to Deluxe.</p>
+          </details>
           <label class="small-note" for="gameThumbnail">Thumbnail image URL</label>
           <input id="gameThumbnail" class="field" type="url" placeholder="https://example.com/thumbnail.png">
           <label class="small-note" for="gameIcon">Game icon URL (optional)</label>
@@ -1121,6 +1152,7 @@ body.light-mode .game-detail-description-card{background:#fff}
     currentProfile = data;
     applyExclusiveTheme();
     renderExclusiveThemeSettings();
+    renderAvatarCustomizer();
     const message = $("exclusiveThemeMessage");
     if (message) message.textContent = "SFOTH theme unlocked and saved to your account!";
     if (window.showDeluxeToast) window.showDeluxeToast("Theme unlocked!", "SFOTH theme is now available in Settings.");
@@ -1595,7 +1627,61 @@ body.light-mode .game-detail-description-card{background:#fff}
     btn.textContent = currentProfile?.username || currentUser.email || "Account";
     btn.classList.remove("username-admin","username-publisher","username-bugtester");
     const usernameRoleClass=currentRole==="admin"?"username-admin":currentRole==="publisher"?"username-publisher":currentRole==="bugtester"?"username-bugtester":"";if(usernameRoleClass)btn.classList.add(usernameRoleClass);
-    btn.innerHTML=escapeHtml(currentProfile?.username || currentUser.email || "Account")+" "+roleTicksMarkup(currentRoles,currentRole==="admin"?"admin":"user");
+    const avatarUrl = currentProfile?.avatar_url && validGameUrl(currentProfile.avatar_url) ? currentProfile.avatar_url : "";
+    btn.innerHTML = (avatarUrl ? '<img class="top-profile-avatar" src="' + escapeHtml(avatarUrl) + '" alt="">' : "👤") + '<span class="profile-hover-card">' + escapeHtml(currentProfile?.username || currentUser.email || "Account") + '</span>';
+  }
+
+  function safeAvatarUrl(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      const url = new URL(raw);
+      return (url.protocol === "https:" || url.protocol === "http:") ? url.href : null;
+    } catch { return null; }
+  }
+
+  function renderAvatarCustomizer() {
+    const input = $("avatarImageUrl");
+    const preview = $("avatarCustomizerPreview");
+    const message = $("avatarCustomizerMessage");
+    if (!input || !preview) return;
+    const url = currentProfile?.avatar_url || "";
+    input.value = url;
+    preview.innerHTML = url && safeAvatarUrl(url) ? '<img class="avatar-preview-image" src="' + escapeHtml(url) + '" alt="Avatar preview">' : escapeHtml(initials(currentProfile?.username || currentUser?.email || "User"));
+    if (message && !currentUser) message.textContent = "Sign in to customise your avatar.";
+    if ($("saveAvatarButton")) $("saveAvatarButton").disabled = !currentUser;
+    if ($("clearAvatarButton")) $("clearAvatarButton").disabled = !currentUser || !url;
+  }
+
+  async function saveAvatarUrl(remove=false) {
+    const message = $("avatarCustomizerMessage");
+    const button = $("saveAvatarButton");
+    if (!sb || !currentUser) {
+      if (message) message.textContent = "Sign in to save an avatar.";
+      return;
+    }
+    const url = remove ? null : safeAvatarUrl($("avatarImageUrl").value);
+    if (url === null && !remove) {
+      if (message) message.textContent = "Enter a valid image address beginning with https:// or http://.";
+      return;
+    }
+    if (!remove && !url) {
+      if (message) message.textContent = "Paste an image address first, or choose Remove Avatar.";
+      return;
+    }
+    if (button) button.disabled = true;
+    if (message) message.textContent = "Saving avatar…";
+    const {data,error} = await sb.from("profiles").update({avatar_url:url}).eq("id",currentUser.id).select("*").single();
+    if (button) button.disabled = false;
+    if (error) {
+      console.error("Avatar update failed:", error);
+      if (message) message.textContent = "Couldn't save your avatar: " + error.message;
+      return;
+    }
+    currentProfile = data;
+    updateAccountUI();
+    renderAvatarCustomizer();
+    if (message) message.textContent = remove ? "Avatar removed from your profile." : "Avatar saved and synced to your account.";
   }
 
   function switchAuthTab(tab){
@@ -2340,6 +2426,11 @@ flushDeluxePlayTracking();
     }
     // Badge text observation was removed with the badges feature; do not call its deleted handler.
     frame.src=url;
+    frame.addEventListener("load", () => {
+      if (frame.contentWindow && currentGame) {
+        frame.contentWindow.postMessage({type:"deluxe:load-request",gameId:currentGame.id},"*");
+      }
+    }, {once:true});
     try{
       const response=await fetch(url,{mode:"cors",credentials:"omit",cache:"no-store"});
       if(!response.ok)return;
@@ -2407,6 +2498,50 @@ flushDeluxePlayTracking();
       gameChatRefreshTimer=setInterval(()=>loadGameChat(true),15000);
     }
   }
+
+  // Cloud-save bridge: only accept messages from the currently active game frame.
+  let cloudSaveRequestFrame = null;
+  window.addEventListener("message", async event => {
+    const frame = $("activeGameFrame");
+    if (!frame || event.source !== frame.contentWindow || !currentGame || !event.data || typeof event.data !== "object") return;
+    if (event.data.type === "deluxe:load-request") {
+      if (!currentUser) {
+        frame.contentWindow.postMessage({type:"deluxe:load",data:null,reason:"sign-in-required"},"*");
+        return;
+      }
+      const {data,error} = await sb.from("game_cloud_saves").select("save_data,updated_at").eq("user_id",currentUser.id).eq("game_id",currentGame.id).maybeSingle();
+      if (error) {
+        console.error("Cloud save load failed:", error);
+        frame.contentWindow.postMessage({type:"deluxe:load",data:null,reason:"load-failed"},"*");
+        return;
+      }
+      frame.contentWindow.postMessage({type:"deluxe:load",data:data?.save_data ?? null,updatedAt:data?.updated_at ?? null},"*");
+    }
+    if (event.data.type === "deluxe:save") {
+      if (!currentUser) {
+        frame.contentWindow.postMessage({type:"deluxe:save-result",ok:false,reason:"sign-in-required"},"*");
+        return;
+      }
+      let serialized;
+      try {
+        serialized = JSON.stringify(event.data.data);
+        if (serialized === undefined || serialized.length > 450000) throw new Error("Save data is too large (maximum 450 KB).");
+      } catch (error) {
+        frame.contentWindow.postMessage({type:"deluxe:save-result",ok:false,reason:error.message || "Invalid save data."},"*");
+        return;
+      }
+      let saveData;
+      try { saveData = JSON.parse(serialized); } catch {
+        frame.contentWindow.postMessage({type:"deluxe:save-result",ok:false,reason:"Save data must be valid JSON."},"*");
+        return;
+      }
+      const {error} = await sb.from("game_cloud_saves").upsert({
+        user_id:currentUser.id, game_id:currentGame.id, save_data:saveData, updated_at:new Date().toISOString()
+      },{onConflict:"user_id,game_id"});
+      frame.contentWindow.postMessage({type:"deluxe:save-result",ok:!error,reason:error?.message || null},"*");
+      if (error) console.error("Cloud save write failed:",error);
+    }
+  });
 
   function openGameMenu(){ $("gameMenu")?.classList.remove("hidden"); }
   function closeGameMenu(){ $("gameMenu")?.classList.add("hidden"); }
@@ -2920,6 +3055,17 @@ flushDeluxePlayTracking();
   $("loginSubmit").onclick = login;
   $("signupSubmit").onclick = signup;
   $("resetPassword").onclick = resetPassword;
+  $("avatarImageUrl")?.addEventListener("input", () => {
+    const preview = $("avatarCustomizerPreview");
+    const url = safeAvatarUrl($("avatarImageUrl").value);
+    if (!preview) return;
+    preview.innerHTML = url ? '<img class="avatar-preview-image" src="' + escapeHtml(url) + '" alt="Avatar preview">' : escapeHtml(initials(currentProfile?.username || currentUser?.email || "User"));
+  });
+  $("saveAvatarButton")?.addEventListener("click", () => saveAvatarUrl(false));
+  $("clearAvatarButton")?.addEventListener("click", () => {
+    $("avatarImageUrl").value = "";
+    saveAvatarUrl(true);
+  });
   $("settingsSignOut")?.addEventListener("click", async () => {
     const button = $("settingsSignOut");
     const message = $("settingsSignOutMessage");
