@@ -881,10 +881,9 @@ function loadFromDeluxe(onLoaded) {
   const SUPABASE_URL = "https://hhszfqpojhmwbmuhdmis.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk";
 
-  const AUTH_STORAGE_KEY = "sb-hhszfqpojhmwbmuhdmis-auth-token";
   const sb = (SUPABASE_URL !== "YOUR_SUPABASE_URL" &&
               SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY")
-    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:AUTH_STORAGE_KEY,storage:window.localStorage}})
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"sb-hhszfqpojhmwbmuhdmis-auth-token",storage:window.localStorage}})
     : null;
 
   let currentUser = null;
@@ -1262,9 +1261,6 @@ function loadFromDeluxe(onLoaded) {
       }
     }
     updateAccountUI();
-    // Auth changes must refresh the creator collections row as well as account controls.
-    await loadGameCollections();
-    renderGameCollections($("gameSearch")?.value.trim().toLowerCase() || "");
     if (currentUser) {
       loadUserInbox();
       updateUnreadBadge().catch(err=>console.warn("Unread count refresh failed:",err));
@@ -1737,21 +1733,17 @@ function loadFromDeluxe(onLoaded) {
         return setAuthMessage(error.message, true);
       }
 
-      // getSession() can return the SDK's in-memory session even if browser
-      // storage rejected the write. Verify the actual persisted refresh token.
+      // Confirm Supabase has an active session before showing a signed-in state.
+      // Supabase persists this session using the configured localStorage adapter.
       const {data:stored,error:storedError} = await sb.auth.getSession();
       if (storedError) throw storedError;
       const activeSession = stored?.session;
-      const persistedRaw = window.localStorage.getItem(AUTH_STORAGE_KEY);
-      let persistedSession = null;
-      try { persistedSession = JSON.parse(persistedRaw || "null"); } catch {}
-      if (!activeSession || activeSession.user?.id !== data?.user?.id ||
-          persistedSession?.user?.id !== data?.user?.id ||
-          !persistedSession?.refresh_token) {
-        throw new Error("Your login worked, but this browser did not save the sign-in session. Check that site storage is enabled, then try again.");
+      if (!activeSession || activeSession.user?.id !== data?.user?.id) {
+        throw new Error("Your login worked, but Deluxe could not save the session in this browser. Check that site storage is enabled, then try again.");
       }
-      // SIGNED_IN is handled by the single auth listener below. Do not start
-      // a second profile/session refresh here.
+      await refreshSession(activeSession,true);
+      await enforceCurrentUserBan();
+      await updateUnreadBadge();
 
       $("loginSubmit").disabled = false;
       setAuthMessage("Signed in.");
@@ -1789,7 +1781,7 @@ function loadFromDeluxe(onLoaded) {
     if (error) return setAuthMessage(error.message, true);
 
     if (data.session) {
-      // The SIGNED_IN event restores the account through the shared auth listener.
+      await refreshSession();
       setAuthMessage("Account created.");
       setTimeout(() => closeModal("authModal"), 700);
     } else {
@@ -2192,10 +2184,9 @@ function loadFromDeluxe(onLoaded) {
   function renderGameCollections(query=""){
     const sectionEl=$("gameCollectionsSection"),row=$("gameCollectionsRow"),create=$("createGameCollectionButton");
     if(!sectionEl||!row)return;
-    // Always show the collection entry point; the editor prompts for sign-in if needed.
-    if(create){create.style.display="inline-flex";create.disabled=false;}
+    if(create)create.style.display=currentUser?"inline-flex":"none";
     const visible=gameCollections.filter(c=>!query||c.title.toLowerCase().includes(query));
-    sectionEl.style.display="block";
+    sectionEl.style.display=visible.length||currentUser?"block":"none";
     row.innerHTML=visible.map(c=>'<button class="game-collection-poster" type="button" onclick="openGameCollection(\''+c.id+'\')"><img src="'+escapeHtml(c.image_url)+'" alt=""><strong>'+escapeHtml(c.title)+'</strong></button>').join("")||'<p class="small-note">Create a collection from games you made.</p>';
   }
   function openGameCollection(id){
@@ -3179,14 +3170,14 @@ flushDeluxePlayTracking();
 
   if (sb) {
     sb.auth.onAuthStateChange((event, session) => {
-      // Supabase emits INITIAL_SESSION on subscription and SIGNED_IN,
-      // TOKEN_REFRESHED and SIGNED_OUT as they occur. This listener is the
-      // only owner of session-to-UI restoration; don't race it with getSession().
-      // Defer database work until Supabase releases its auth lock.
+      // Defer profile/database work until Supabase releases its auth lock.
       setTimeout(() => {
-        refreshSession(session || null, true).catch(err => console.error("Session state update failed ("+event+"):", err));
+        refreshSession(session || null, true).catch(err => console.error("Session state update failed:", err));
       }, 0);
     });
+    // Do an explicit startup read too. This covers browsers where the initial
+    // auth event is delayed or missed while the page is being initialized.
+    refreshSession().catch(err => console.error("Startup session restore failed:",err));
   }
   // Save active play sessions periodically, not only when the player exits.
   setInterval(() => {
@@ -3652,7 +3643,12 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
     });
   };
   document.addEventListener("click",e=>{const pageLink=e.target.closest("[data-page]");if(pageLink)setTimeout(refreshSidebar,0);});
-  // Expose collection detail handlers used by the collection cards and modal markup.
+  // Wire the collection controls explicitly: the original markup had no click or submit handlers.
+  const createCollectionButton=$id("createGameCollectionButton");
+  createCollectionButton?.addEventListener("click",()=>openGameCollectionEditor());
+  const collectionForm=$id("gameCollectionForm");
+  collectionForm?.addEventListener("submit",saveGameCollection);
+  // Collection cards and modal close controls use inline handlers.
   window.openGameCollection=openGameCollection;
   window.closeGameCollectionDetail=closeGameCollectionDetail;
   window.closeGameCollectionEditor=closeGameCollectionEditor;
