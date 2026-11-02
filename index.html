@@ -3646,11 +3646,7 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
     });
   };
   document.addEventListener("click",e=>{const pageLink=e.target.closest("[data-page]");if(pageLink)setTimeout(refreshSidebar,0);});
-  // Wire the collection controls explicitly: the original markup had no click or submit handlers.
-  const createCollectionButton=$id("createGameCollectionButton");
-  createCollectionButton?.addEventListener("click",()=>openGameCollectionEditor());
-  const collectionForm=$id("gameCollectionForm");
-  collectionForm?.addEventListener("submit",saveGameCollection);
+  // The main page script already wires collection creation and saving once.
   // Collection cards and modal close controls use inline handlers.
   window.openGameCollection=openGameCollection;
   window.closeGameCollectionDetail=closeGameCollectionDetail;
