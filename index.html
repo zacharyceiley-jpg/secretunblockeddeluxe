@@ -2187,9 +2187,10 @@ function loadFromDeluxe(onLoaded) {
   function renderGameCollections(query=""){
     const sectionEl=$("gameCollectionsSection"),row=$("gameCollectionsRow"),create=$("createGameCollectionButton");
     if(!sectionEl||!row)return;
-    if(create)create.style.display=currentUser?"inline-flex":"none";
+    // Always show the collection entry point; the editor prompts for sign-in if needed.
+    if(create){create.style.display="inline-flex";create.disabled=false;}
     const visible=gameCollections.filter(c=>!query||c.title.toLowerCase().includes(query));
-    sectionEl.style.display=visible.length||currentUser?"block":"none";
+    sectionEl.style.display="block";
     row.innerHTML=visible.map(c=>'<button class="game-collection-poster" type="button" onclick="openGameCollection(\''+c.id+'\')"><img src="'+escapeHtml(c.image_url)+'" alt=""><strong>'+escapeHtml(c.title)+'</strong></button>').join("")||'<p class="small-note">Create a collection from games you made.</p>';
   }
   function openGameCollection(id){
