@@ -3266,7 +3266,7 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
   const $id = id => document.getElementById(id);
   const roleColors = {admin:"#ff4d5f",publisher:"#4ade80",bugtester:"#60a5fa",user:"#687482"};
   function refreshSidebar(){
-    const active=document.querySelector(".page.active")?.id?.replace(/Page$/,"");
+    let active=document.querySelector(".page.active")?.id?.replace(/Page$/,"");if(active==="game"||active==="gameDetail")active="games";
     document.querySelectorAll(".sidebar-link[data-page]").forEach(link=>link.classList.toggle("active",link.dataset.page===active));
     const old=$id("unreadBadge"),copy=$id("sidebarUnreadBadge");
     if(old&&copy){copy.textContent=old.textContent;copy.classList.toggle("hidden",old.classList.contains("hidden"));}
@@ -3299,6 +3299,8 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
     if(el){el.textContent="🪙";el.dataset.tooltip=amount;el.title=amount;}
     if(hover)hover.textContent=amount;
   };
+  const originalUnreadUI=window.updateUnreadBadgeUI;
+  window.updateUnreadBadgeUI=function(){if(originalUnreadUI)originalUnreadUI();const a=$id("unreadBadge"),b=$id("sidebarUnreadBadge");if(a&&b){b.textContent=a.textContent;b.classList.toggle("hidden",a.classList.contains("hidden"));}};
   const oldToast=$id("deluxeToast");
   if(oldToast){
     const reply=$id("deluxeToastReply")||document.createElement("button");
