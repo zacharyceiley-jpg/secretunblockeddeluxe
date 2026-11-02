@@ -289,7 +289,7 @@ body:has(.deluxe-sidebar:hover) .deluxe-sidebar,body:has(.deluxe-sidebar:focus-w
 .game-discovery-grid .game-card:hover .game-card-body,.game-discovery-grid .game-card:focus-within .game-card-body{opacity:1!important}
 .game-discovery-grid .game-title{font-size:15px!important;font-weight:850;color:white!important}
 .game-discovery-grid .game-card-actions{display:none!important}
-.game-card-rating{font-size:12px;font-weight:800;color:#facc15}
+.game-card-rating{font-size:12px;font-weight:800;color:#facc15}.game-card-tags{display:flex;flex-wrap:wrap;gap:4px}.game-card-tags .game-tag{font-size:10px;padding:4px 7px;margin:0}
 .game-hover-promo{position:absolute;inset:0;width:100%;height:100%;border:0;opacity:0;pointer-events:none;transition:opacity .2s;z-index:1;background:#000}
 .game-hover-promo iframe{width:100%;height:100%;border:0;pointer-events:none}
 .game-card:hover .game-hover-promo{opacity:1}.game-card:hover .game-thumb{opacity:.18}
@@ -3315,8 +3315,8 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
     const thumb=image&&validGameUrl(image)?'<img src="'+escapeHtml(image)+'" alt="'+title+' icon" loading="lazy">':"🎮";
     const promo=Array.isArray(g.promo_videos)?g.promo_videos[0]:"";
     const promoId=/^[A-Za-z0-9_-]{11}$/.test(promo||"")?promo:"";
-    const rating=Number(g.average_rating||g.rating||0);
-    return '<article class="game-card" tabindex="0" role="button" aria-label="View '+title+'" onclick="openGameDetails(\''+g.id+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGameDetails(\''+g.id+'\')}"><div class="game-thumb">'+thumb+'</div>'+(promoId?'<div class="game-hover-promo"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/'+promoId+'?autoplay=1&mute=1&controls=0&loop=1&playlist='+promoId+'&playsinline=1" title="Muted game preview" allow="autoplay; encrypted-media"></iframe></div>':'')+'<div class="game-card-body"><div class="game-title">'+title+'</div><div class="game-card-rating">'+(rating>0?'★ '+rating.toFixed(1):'☆ Not rated')+'</div></div></article>';
+    const rating=Number(g.average_rating||g.rating||0);const tagMarkup=getGameGenres(g).slice(0,3).map(t=>'<span class="game-tag">'+escapeHtml(t)+'</span>').join("");
+    return '<article class="game-card" tabindex="0" role="button" aria-label="View '+title+'" onclick="openGameDetails(\''+g.id+'\')" onkeydown="if(event.key===\'Enter\'||event.key===\' \'){event.preventDefault();openGameDetails(\''+g.id+'\')}"><div class="game-thumb">'+thumb+'</div>'+(promoId?'<div class="game-hover-promo"><iframe loading="lazy" src="https://www.youtube-nocookie.com/embed/'+promoId+'?autoplay=1&mute=1&controls=0&loop=1&playlist='+promoId+'&playsinline=1" title="Muted game preview" allow="autoplay; encrypted-media"></iframe></div>':'')+'<div class="game-card-body"><div class="game-title">'+title+'</div><div class="game-card-tags">'+tagMarkup+'</div><div class="game-card-rating">'+(rating>0?'★ '+rating.toFixed(1):'☆ Not rated')+'</div></div></article>';
   };
   window.renderGames=function(filter=""){
     const q=String(filter||"").trim().toLocaleLowerCase();
