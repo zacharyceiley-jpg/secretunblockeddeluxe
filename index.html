@@ -353,7 +353,7 @@ body.light-mode .game-detail-description-card{background:#fff}
 .game-rating-panel{margin:22px 0;padding:17px 19px;border:1px solid var(--line);border-radius:15px;background:var(--panel)}
 .game-rating-panel h3{margin:0 0 8px;font-size:16px}.game-rating-summary{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px;margin-bottom:11px}.game-rating-summary strong{font-size:20px;color:#facc15}
 .game-rating-stars{display:flex;gap:5px;flex-wrap:wrap}.game-rating-star{border:1px solid var(--line);background:var(--panel2);color:#77808a;border-radius:9px;width:42px;height:40px;font-size:23px;cursor:pointer;transition:.15s}
-.game-rating-star:hover,.game-rating-star.selected{color:#facc15;border-color:#d4a72c;background:rgba(250,204,21,.1)}.game-rating-star:disabled{opacity:.5;cursor:not-allowed}.game-rating-note{font-size:12px;color:var(--muted);margin-top:9px}</style>
+.game-rating-star:hover,.game-rating-star.selected{color:#facc15;border-color:#d4a72c;background:rgba(250,204,21,.1)}.game-rating-star:disabled{opacity:.5;cursor:not-allowed}.game-rating-note{font-size:12px;color:var(--muted);margin-top:9px}.game-collections-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}.game-collection-poster{border:1px solid var(--line);border-radius:14px;overflow:hidden;background:var(--panel);cursor:pointer;text-align:left;padding:0;color:var(--text)}.game-collection-poster img{display:block;width:100%;aspect-ratio:2/3;object-fit:cover}.game-collection-poster strong{display:block;padding:12px;font-size:15px}.collection-game-choices{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px;max-height:260px;overflow:auto}.collection-game-choice{display:flex;align-items:center;gap:9px;padding:8px;border:1px solid var(--line);border-radius:9px}.collection-game-choice img{width:42px;height:42px;object-fit:cover;border-radius:8px}.collection-detail-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:14px;margin-top:18px}.collection-detail-game{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;text-align:center;cursor:pointer;color:var(--text)}.collection-detail-game img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:9px}.collection-detail-game strong{display:block;margin-top:8px;font-size:13px}@media(max-width:520px){.game-collections-row{grid-template-columns:repeat(2,minmax(0,1fr))}}</style>
 <style id="deluxeSocialStyles">
 .social-layout{display:grid;grid-template-columns:minmax(220px,.7fr) minmax(0,1.5fr);gap:18px;align-items:start}.social-panel{background:var(--panel);border:1px solid var(--line);border-radius:15px;padding:17px;min-width:0}.social-panel h2,.social-panel h3{margin:0 0 12px}.social-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}.social-row:last-child{border-bottom:0}.social-row .grow{flex:1;min-width:0}.social-row small,.social-muted{color:var(--muted);font-size:12px}.social-input,.social-select,.social-textarea{width:100%;padding:11px 12px;background:#0b0d11;border:1px solid var(--line);border-radius:9px;color:var(--text);margin:5px 0 10px}.social-textarea{min-height:75px;resize:vertical}.social-feed{display:grid;gap:9px;max-height:440px;overflow:auto;margin:12px 0}.social-post{background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:12px}.social-post p{white-space:pre-wrap;overflow-wrap:anywhere;margin:7px 0 0;line-height:1.5}.social-channel-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:10px 0}.social-channel-tabs button.active{background:var(--accent);border-color:var(--accent)}.presence-pill{display:inline-flex;align-items:center;gap:5px;color:var(--muted);font-size:12px}.presence-pill:before{content:"";width:7px;height:7px;border-radius:50%;background:#747b88}.presence-pill.online:before{background:#4ade80}.deluxe-toast{position:fixed;top:18px;right:18px;bottom:auto;z-index:2147483647;max-width:min(390px,calc(100vw - 36px));background:#171b24;border:1px solid var(--accent);box-shadow:0 18px 55px #0008;border-radius:14px;padding:15px 17px;pointer-events:auto}.deluxe-toast strong{display:block;margin-bottom:5px}.deluxe-toast p{margin:0;color:var(--muted);line-height:1.45;font-size:14px}.game-player-shell:fullscreen{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important;max-width:none!important;margin:0!important;padding:0!important;border:0!important;border-radius:0!important;background:#000!important;z-index:1}.game-player-shell:fullscreen .game-player-frame{width:100%!important;height:100%!important;max-width:none!important;max-height:none!important}.game-player-shell:fullscreen .deluxe-toast{position:fixed;top:18px;right:18px;bottom:auto;z-index:2147483647}@media(max-width:760px){.social-layout{grid-template-columns:1fr}}
 </style><style id="deluxeDiscoverStyles">
@@ -539,6 +539,7 @@ body.light-mode .game-detail-description-card{background:#fff}
         </select>
         <button class="secondary" type="button" onclick="saveDeluxePreferredGenres()">Save genres</button>
       </div>
+      <section id="gameCollectionsSection" class="game-discovery-section" style="display:none"><div class="section-heading"><div><p class="eyebrow">CURATED BY CREATORS</p><h2>Collections</h2></div><button class="secondary" id="createGameCollectionButton" type="button">＋ Create collection</button></div><div id="gameCollectionsRow" class="game-collections-row"></div></section>
       <div id="publicGamesSection">
         <div class="section-heading"><div><p class="eyebrow">LIBRARY</p><h2>Published Games</h2></div></div>
         <div id="gameGrid" class="user-grid"><div class="loading">Loading games…</div></div>
@@ -546,6 +547,8 @@ body.light-mode .game-detail-description-card{background:#fff}
     </section>
 
 
+    <div id="gameCollectionEditor" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" onclick="closeGameCollectionEditor()"></div><section class="modal-card" role="dialog" aria-modal="true" style="width:min(650px,100%);max-height:90vh;overflow:auto"><button class="modal-close" type="button" onclick="closeGameCollectionEditor()">×</button><p class="eyebrow">CREATOR COLLECTION</p><h2 id="collectionEditorHeading">Create collection</h2><form id="gameCollectionForm" class="game-form"><label class="small-note" for="collectionTitleInput">Collection title</label><input id="collectionTitleInput" maxlength="80" required placeholder="My favourite games"><label class="small-note" for="collectionImageInput">Collection poster image URL</label><input id="collectionImageInput" type="url" required placeholder="https://example.com/poster.jpg"><label class="small-note">Choose games you created</label><div id="collectionGameChoices" class="collection-game-choices"></div><div id="collectionEditorMessage" class="theme-message"></div><div class="theme-actions"><button class="primary" type="submit" id="saveGameCollectionButton">Save collection</button><button class="secondary" type="button" onclick="closeGameCollectionEditor()">Cancel</button></div></form></section></div>
+    <div id="gameCollectionDetail" class="modal hidden" aria-hidden="true"><div class="modal-backdrop" onclick="closeGameCollectionDetail()"></div><section class="modal-card" role="dialog" aria-modal="true" style="width:min(900px,100%);max-height:90vh;overflow:auto"><button class="modal-close" type="button" onclick="closeGameCollectionDetail()">×</button><p class="eyebrow">GAME COLLECTION</p><h2 id="collectionDetailTitle"></h2><div id="collectionDetailGrid" class="collection-detail-grid"></div></section></div>
     <div id="gameUploader" class="modal hidden" aria-hidden="true">
       <div class="modal-backdrop" id="gameUploaderBackdrop"></div>
       <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="gameEditorTitle" style="width:min(620px,100%);max-height:90vh;overflow:auto">
@@ -1925,6 +1928,7 @@ function loadFromDeluxe(onLoaded) {
       </article>`;
     }).join("");
     const purchasedSection = seasonalGames.length ? '<section class="game-discovery-section" id="purchasedSeasonalSection"><div class="section-heading"><div><p class="eyebrow">YOUR COLLECTION</p><h2>Purchased Games</h2></div></div><div class="game-discovery-grid" id="purchasedSeasonalGrid">' + seasonalCards + '</div></section>' : "";
+    renderGameCollections(q);
     $("gameGrid").innerHTML =
       section("Continue","RECENTLY PLAYED",recentlyPlayed,"continueGames") +
       section("Trending","MOST PLAYED",trending,"trendingGames") +
@@ -2143,11 +2147,63 @@ function loadFromDeluxe(onLoaded) {
     }
 
     allPublishedGames = publicResult.data || [];
+    await loadGameCollections();
     await loadPurchasedSeasonalGames();
     restoreDeluxePreferredGenres();
     renderGames($("gameSearch")?.value || "");
   }
 
+  let gameCollections = [];
+  let editingCollectionId = null;
+  async function loadGameCollections(){
+    if(!sb){gameCollections=[];return;}
+    const {data,error}=await sb.from("game_collections").select("id,owner_id,title,image_url,created_at,game_collection_items(game_id,position,games(id,title,icon_url,thumbnail_url,creator_id,status))").order("created_at",{ascending:false});
+    if(error){console.warn("Collections could not be loaded:",error);gameCollections=[];return;}
+    gameCollections=(data||[]).map(c=>({...c,items:(c.game_collection_items||[]).filter(x=>x.games).sort((a,b)=>a.position-b.position).map(x=>x.games)}));
+  }
+  function renderGameCollections(query=""){
+    const sectionEl=$("gameCollectionsSection"),row=$("gameCollectionsRow"),create=$("createGameCollectionButton");
+    if(!sectionEl||!row)return;
+    if(create)create.style.display=currentUser?"inline-flex":"none";
+    const visible=gameCollections.filter(c=>!query||c.title.toLowerCase().includes(query));
+    sectionEl.style.display=visible.length||currentUser?"block":"none";
+    row.innerHTML=visible.map(c=>'<button class="game-collection-poster" type="button" onclick="openGameCollection(\''+c.id+'\')"><img src="'+escapeHtml(c.image_url)+'" alt=""><strong>'+escapeHtml(c.title)+'</strong></button>').join("")||'<p class="small-note">Create a collection from games you made.</p>';
+  }
+  function openGameCollection(id){
+    const c=gameCollections.find(x=>x.id===id);if(!c)return;
+    $("collectionDetailTitle").textContent=c.title;
+    $("collectionDetailGrid").innerHTML=c.items.map(g=>{const icon=validGameUrl(g.icon_url)?g.icon_url:(validGameUrl(g.thumbnail_url)?g.thumbnail_url:"");return '<button class="collection-detail-game" type="button" onclick="openGame(\''+g.id+'\');closeGameCollectionDetail()"><img src="'+escapeHtml(icon)+'" alt=""><strong>'+escapeHtml(g.title||"Untitled game")+'</strong></button>'}).join("")||'<p class="small-note">This collection has no games yet.</p>';
+    openModal("gameCollectionDetail");
+  }
+  function closeGameCollectionDetail(){closeModal("gameCollectionDetail");}
+  async function openGameCollectionEditor(id=null){
+    if(!currentUser)return openAuth("login");
+    editingCollectionId=id;const existing=gameCollections.find(c=>c.id===id);
+    $("collectionEditorHeading").textContent=existing?"Edit collection":"Create collection";
+    $("collectionTitleInput").value=existing?.title||"";$("collectionImageInput").value=existing?.image_url||"";
+    $("collectionEditorMessage").textContent="Loading your games…";
+    const {data,error}=await sb.from("games").select("id,title,icon_url,thumbnail_url,status").eq("creator_id",currentUser.id).order("created_at",{ascending:false});
+    if(error){$("collectionEditorMessage").textContent=error.message;return;}
+    const selected=new Set((existing?.items||[]).map(g=>g.id));
+    $("collectionGameChoices").innerHTML=(data||[]).map(g=>{const src=validGameUrl(g.icon_url)?g.icon_url:(validGameUrl(g.thumbnail_url)?g.thumbnail_url:"");return '<label class="collection-game-choice"><input type="checkbox" value="'+g.id+'" '+(selected.has(g.id)?"checked":"")+'><img src="'+escapeHtml(src)+'" alt=""><span>'+escapeHtml(g.title||"Untitled game")+'</span></label>'}).join("")||'<p class="small-note">You have not created any games yet.</p>';
+    $("collectionEditorMessage").textContent="Only games you created can be added.";openModal("gameCollectionEditor");
+  }
+  function closeGameCollectionEditor(){closeModal("gameCollectionEditor");}
+  async function saveGameCollection(event){
+    event.preventDefault();if(!currentUser)return openAuth("login");
+    const title=$("collectionTitleInput").value.trim(),image_url=$("collectionImageInput").value.trim();
+    if(!title||!validGameUrl(image_url)){ $("collectionEditorMessage").textContent="Enter a title and a valid poster image URL.";return; }
+    const ids=[...$("collectionGameChoices").querySelectorAll('input[type="checkbox"]:checked')].map(x=>x.value);
+    $("saveGameCollectionButton").disabled=true;$("collectionEditorMessage").textContent="Saving…";
+    try{
+      let collectionId=editingCollectionId;
+      if(collectionId){const {error}=await sb.from("game_collections").update({title,image_url,updated_at:new Date().toISOString()}).eq("id",collectionId).eq("owner_id",currentUser.id);if(error)throw error;}
+      else{const {data,error}=await sb.from("game_collections").insert({owner_id:currentUser.id,title,image_url}).select("id").single();if(error)throw error;collectionId=data.id;}
+      const {error:removeError}=await sb.from("game_collection_items").delete().eq("collection_id",collectionId);if(removeError)throw removeError;
+      if(ids.length){const {data:owned,error:ownedError}=await sb.from("games").select("id").eq("creator_id",currentUser.id).in("id",ids);if(ownedError)throw ownedError;if(owned.length!==ids.length)throw new Error("Collections can only contain your own games.");const {error}=await sb.from("game_collection_items").insert(ids.map((game_id,position)=>({collection_id:collectionId,game_id,position})));if(error)throw error;}
+      await loadGameCollections();renderGameCollections($("gameSearch")?.value.trim().toLowerCase()||"");closeGameCollectionEditor();
+    }catch(error){$("collectionEditorMessage").textContent=error.message||"Could not save collection.";}finally{$("saveGameCollectionButton").disabled=false;}
+  }
   async function loadPurchasedSeasonalGames(){
     ownedSeasonalGames = [];
     if(!currentUser){
@@ -3008,6 +3064,8 @@ flushDeluxePlayTracking();
   $("cancelGameUploader")?.addEventListener("click", closeGameUploader);
   $("gameForm")?.addEventListener("submit", submitGame);
   $("gameSearch")?.addEventListener("input", e => { renderGames(e.target.value); renderPurchasedSeasonalGames(e.target.value); });
+  $("createGameCollectionButton")?.addEventListener("click",()=>openGameCollectionEditor());
+  $("gameCollectionForm")?.addEventListener("submit",saveGameCollection);
   $("discoverSearch")?.addEventListener("input", renderDiscover);
   $("discoverGenreChips")?.addEventListener("click", e => {
     const chip = e.target.closest("[data-discover-genre]");
