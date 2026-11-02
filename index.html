@@ -3444,7 +3444,7 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
   }finally{friendsBusy=false;}
  }
  window.refreshDeluxeFriendsBar=loadFriends;
- const prevAccount=window.updateAccountUI;window.updateAccountUI=function(){prevAccount?.();loadFriends();};
+ const prevAccount=window.updateAccountUI;window.updateAccountUI=function(){prevAccount?.();loadFriends();loadRatings();};
  const prevShow=window.showPage;window.showPage=function(name){prevShow?.(name);if(name==="games")loadFriends();};
  window.addEventListener("load",()=>{loadFriends();loadRatings();});
  setInterval(()=>{if($("gamesPage")?.classList.contains("active"))loadFriends();},20000);
