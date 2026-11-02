@@ -3281,21 +3281,21 @@ window.loadCommunity=async function(){if(oldLoadCommunity)await oldLoadCommunity
     if(originalUpdateAccountUI)originalUpdateAccountUI();
     const btn=$id("accountButton"),login=$id("topLoginButton");
     if(!btn)return;
-    if(!window.currentUser){btn.innerHTML="👤";btn.title="Sign in";btn.setAttribute("aria-label","Sign in");if(login)login.classList.remove("hidden");btn.onclick=()=>window.openAuth?.("login");btn.style.setProperty("--role-color",roleColors.user);return;}
+    if(!currentUser){btn.innerHTML="👤";btn.title="Sign in";btn.setAttribute("aria-label","Sign in");if(login)login.classList.remove("hidden");btn.onclick=()=>window.openAuth?.("login");btn.style.setProperty("--role-color",roleColors.user);return;}
     if(login)login.classList.add("hidden");
-    const profile=window.currentProfile||{};
+    const profile=currentProfile||{};
     const joined=profile.created_at?new Date(profile.created_at).toLocaleDateString(undefined,{year:"numeric",month:"long",day:"numeric"}):"Join date unavailable";
-    const role=window.currentRole||"user",color=roleColors[role]||roleColors.user;
+    const role=currentRole||"user",color=roleColors[role]||roleColors.user;
     btn.style.setProperty("--role-color",color);
     btn.innerHTML=(profile.avatar_url?'<img src="'+String(profile.avatar_url).replace(/"/g,"&quot;")+'" alt="">':"👤")+'<span class="profile-hover-card"><strong style="display:block;color:'+color+'">'+(profile.username||"Deluxe member")+'</strong><small style="color:var(--muted)">Joined '+joined+'</small></span>';
     btn.title=(profile.username||"Profile")+" · Joined "+joined;
-    btn.onclick=()=>{if(typeof window.openOwnProfile==="function")window.openOwnProfile();else if(typeof window.openProfile==="function")window.openProfile(window.currentUser.id);};
+    btn.onclick=()=>{if(typeof window.openOwnProfile==="function")window.openOwnProfile();else if(typeof window.viewProfile==="function")window.viewProfile(currentUser.id);};
   };
   const originalBalance=window.updateDelubuxBalance;
   window.updateDelubuxBalance=function(){
     if(originalBalance)originalBalance();
     const el=$id("delubuxBalance"),hover=$id("delubuxHoverBalance");
-    const amount=Number(window.delubuxBalance||0).toLocaleString()+" Delubux";
+    const amount=Number(delubuxBalance||0).toLocaleString()+" Delubux";
     if(el){el.textContent="🪙";el.dataset.tooltip=amount;el.title=amount;}
     if(hover)hover.textContent=amount;
   };
