@@ -881,9 +881,10 @@ function loadFromDeluxe(onLoaded) {
   const SUPABASE_URL = "https://hhszfqpojhmwbmuhdmis.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhoc3pmcXBvamhtd2JtdWhkbWlzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTAxNDQ0NjAsImV4cCI6MjEwNTcyMDQ2MH0.5eBm0s3JIcumNkQspoXFMazwsO06IPpzwISLsAg9yYk";
 
+  const AUTH_STORAGE_KEY = "sb-hhszfqpojhmwbmuhdmis-auth-token";
   const sb = (SUPABASE_URL !== "YOUR_SUPABASE_URL" &&
               SUPABASE_ANON_KEY !== "YOUR_SUPABASE_ANON_KEY")
-    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:"sb-hhszfqpojhmwbmuhdmis-auth-token",storage:window.localStorage}})
+    ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storageKey:AUTH_STORAGE_KEY,storage:window.localStorage}})
     : null;
 
   let currentUser = null;
@@ -1736,17 +1737,21 @@ function loadFromDeluxe(onLoaded) {
         return setAuthMessage(error.message, true);
       }
 
-      // Confirm Supabase has an active session before showing a signed-in state.
-      // Supabase persists this session using the configured localStorage adapter.
+      // getSession() can return the SDK's in-memory session even if browser
+      // storage rejected the write. Verify the actual persisted refresh token.
       const {data:stored,error:storedError} = await sb.auth.getSession();
       if (storedError) throw storedError;
       const activeSession = stored?.session;
-      if (!activeSession || activeSession.user?.id !== data?.user?.id) {
-        throw new Error("Your login worked, but Deluxe could not save the session in this browser. Check that site storage is enabled, then try again.");
+      const persistedRaw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+      let persistedSession = null;
+      try { persistedSession = JSON.parse(persistedRaw || "null"); } catch {}
+      if (!activeSession || activeSession.user?.id !== data?.user?.id ||
+          persistedSession?.user?.id !== data?.user?.id ||
+          !persistedSession?.refresh_token) {
+        throw new Error("Your login worked, but this browser did not save the sign-in session. Check that site storage is enabled, then try again.");
       }
-      await refreshSession(activeSession,true);
-      await enforceCurrentUserBan();
-      await updateUnreadBadge();
+      // SIGNED_IN is handled by the single auth listener below. Do not start
+      // a second profile/session refresh here.
 
       $("loginSubmit").disabled = false;
       setAuthMessage("Signed in.");
@@ -1784,7 +1789,7 @@ function loadFromDeluxe(onLoaded) {
     if (error) return setAuthMessage(error.message, true);
 
     if (data.session) {
-      await refreshSession();
+      // The SIGNED_IN event restores the account through the shared auth listener.
       setAuthMessage("Account created.");
       setTimeout(() => closeModal("authModal"), 700);
     } else {
@@ -3174,14 +3179,14 @@ flushDeluxePlayTracking();
 
   if (sb) {
     sb.auth.onAuthStateChange((event, session) => {
-      // Defer profile/database work until Supabase releases its auth lock.
+      // Supabase emits INITIAL_SESSION on subscription and SIGNED_IN,
+      // TOKEN_REFRESHED and SIGNED_OUT as they occur. This listener is the
+      // only owner of session-to-UI restoration; don't race it with getSession().
+      // Defer database work until Supabase releases its auth lock.
       setTimeout(() => {
-        refreshSession(session || null, true).catch(err => console.error("Session state update failed:", err));
+        refreshSession(session || null, true).catch(err => console.error("Session state update failed ("+event+"):", err));
       }, 0);
     });
-    // Do an explicit startup read too. This covers browsers where the initial
-    // auth event is delayed or missed while the page is being initialized.
-    refreshSession().catch(err => console.error("Startup session restore failed:",err));
   }
   // Save active play sessions periodically, not only when the player exits.
   setInterval(() => {
