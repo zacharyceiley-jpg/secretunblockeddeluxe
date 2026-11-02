@@ -1222,14 +1222,18 @@ function loadFromDeluxe(onLoaded) {
     }[c]));
   }
 
-  async function refreshSession(){
+  async function refreshSession(sessionOverride, hasSessionOverride=false){
     if (!sb) {
       $("accountButton").textContent = "Configure Supabase";
       return;
     }
-    const {data, error} = await sb.auth.getSession();
-    if (error) console.error(error);
-    currentUser = data?.session?.user || null;
+    let session = sessionOverride;
+    if (!hasSessionOverride) {
+      const {data, error} = await sb.auth.getSession();
+      if (error) console.error("Could not restore Deluxe session:", error);
+      session = data?.session || null;
+    }
+    currentUser = session?.user || null;
     await loadCurrentProfile();
     if (currentUser && currentRole !== "admin") {
       const {data: ban} = await sb.from("user_bans").select("banned_until,reason").eq("user_id",currentUser.id).maybeSingle();
@@ -3087,16 +3091,15 @@ flushDeluxePlayTracking();
   };
 
   if (sb) {
-    sb.auth.onAuthStateChange(() => {
-      // Do not await Supabase auth calls inside this callback.
-      // Waiting here can deadlock the auth lock during sign-in.
+    sb.auth.onAuthStateChange((event, session) => {
+      // Supabase supplies the restored session in INITIAL_SESSION. Use that
+      // exact session instead of racing it with a second getSession() call.
+      // Defer async profile/database work to avoid holding the auth lock.
       setTimeout(() => {
-        refreshSession().catch(err => console.error("Session refresh error:", err));
+        refreshSession(session || null, true).catch(err => console.error("Session restore error:", err));
       }, 0);
     });
   }
-
-  refreshSession();
   // Save active play sessions periodically, not only when the player exits.
   setInterval(() => {
     if (currentGame && deluxePlayTrackingId === currentGame.id) flushDeluxePlayTracking();
