@@ -1202,7 +1202,7 @@ function loadFromDeluxe(onLoaded) {
     if (page) page.classList.add("active");
     if (name === "users") loadUsers();
     if (name === "community") loadCommunity();
-    if (name === "settings") renderExclusiveThemeSettings();
+    if (name === "settings") { renderExclusiveThemeSettings(); renderAvatarCustomizer(); }
     if (name === "inbox" && !currentUser) openAuth("login");
     if (name === "games") loadGames();
     if (name === "discover") { if (!allPublishedGames.length) loadGames().then(() => renderDiscover()); else renderDiscover(); }
