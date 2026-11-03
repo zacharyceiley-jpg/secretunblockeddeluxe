@@ -2765,9 +2765,15 @@ flushDeluxePlayTracking();
     if(button)button.disabled=true;
     if(status){status.style.color="var(--muted)";status.textContent="Granting Publisher access…";}
     try{
-      const {data,error}=await sb.rpc("admin_gift_role",{p_target_user_id:userId,p_role:"publisher"});
-      if(error)throw error;
-      if(status){status.style.color="var(--success, #62d69a)";status.textContent=data?.already_owned?(recipient?.username||"This user")+" already has Publisher access.":"Publisher access gifted to "+(data?.username||recipient?.username||"user")+"."}
+      const {data:existing,error:lookupError}=await sb.from("user_role_ownership").select("role").eq("user_id",userId).eq("role","publisher").maybeSingle();
+      if(lookupError)throw lookupError;
+      if(existing){
+        if(status){status.style.color="var(--muted)";status.textContent=(recipient?.username||"This user")+" already has Publisher access.";}
+      }else{
+        const {error}=await sb.from("user_role_ownership").insert({user_id:userId,role:"publisher"});
+        if(error)throw error;
+        if(status){status.style.color="var(--success, #62d69a)";status.textContent="Publisher access gifted to "+(recipient?.username||"user")+".";}
+      }
       if(userId===currentUser.id)await loadCurrentProfile();
     }catch(error){
       console.error("Publisher role gift failed:",error);
